@@ -1,9 +1,9 @@
 export enum Role {
-  USER = "USER",
-  OPERATOR = "OPERATOR",
-  ADMIN = "ADMIN",
-  GOVERNANCE_OPERATOR = "GOVERNANCE_OPERATOR",
-  KYC_OPERATOR = "KYC_OPERATOR",
+  USER = "user",
+  OPERATOR = "operator",
+  ADMIN = "admin",
+  GOVERNANCE_OPERATOR = "governance_operator",
+  KYC_OPERATOR = "kyc_operator",
 }
 
 /**

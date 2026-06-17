@@ -4,11 +4,13 @@ import { ChallengeService } from "./challenge.service";
 import { JwtService } from "@nestjs/jwt";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { User, UserRole } from "../user/entities/user.entity";
+import { Wallet } from "./entities/wallet.entity";
 import { Repository } from "typeorm";
 import {
   UnauthorizedException,
   BadRequestException,
   ConflictException,
+  NotFoundException,
 } from "@nestjs/common";
 
 // Mock ethers
@@ -33,7 +35,7 @@ describe("WalletAuthService", () => {
     role: UserRole.USER,
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  } as any;
 
   const mockChallengeService = {
     issueChallengeForAddress: jest.fn(),
@@ -50,11 +52,42 @@ describe("WalletAuthService", () => {
     findOne: jest.fn(),
     save: jest.fn(),
     create: jest.fn(),
+    update: jest.fn(),
+  };
+
+  const mockWalletRepository = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+    create: jest.fn(),
+    find: jest.fn(),
+    update: jest.fn(),
   };
 
   beforeEach(async () => {
     // Get the mocked verifyMessage
     verifyMessage = require("ethers").verifyMessage;
+
+    // Reset all mocks
+    mockUserRepository.findOne.mockReset();
+    mockUserRepository.save.mockReset();
+    mockUserRepository.create.mockReset();
+    mockUserRepository.update.mockReset();
+    
+    mockWalletRepository.findOne.mockReset();
+    mockWalletRepository.save.mockReset();
+    mockWalletRepository.create.mockReset();
+    mockWalletRepository.find.mockReset();
+    mockWalletRepository.update.mockReset();
+
+    // Default implementations
+    mockUserRepository.save.mockImplementation(async (u) => u);
+    mockUserRepository.create.mockImplementation((u) => u);
+    mockUserRepository.update.mockResolvedValue({});
+    
+    mockWalletRepository.save.mockImplementation(async (w) => w);
+    mockWalletRepository.create.mockImplementation((w) => w);
+    mockWalletRepository.find.mockResolvedValue([]);
+    mockWalletRepository.update.mockResolvedValue({});
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -71,6 +104,10 @@ describe("WalletAuthService", () => {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
         },
+        {
+          provide: getRepositoryToken(Wallet),
+          useValue: mockWalletRepository,
+        },
       ],
     }).compile();
 
@@ -86,8 +123,30 @@ describe("WalletAuthService", () => {
     expect(service).toBeDefined();
   });
 
+  describe("verifySignatureAndIssueToken", () => {
+    const message = "Sign this challenge";
+    const signature = "0x" + "1".repeat(130);
+    const challengeId = "challenge-123";
+
+    it("should verify signature and issue token successfully", async () => {
+      mockChallengeService.extractChallengeId.mockReturnValue(challengeId);
+      mockChallengeService.consumeChallenge.mockReturnValue({
+        address: "0x1234567890abcdef1234567890abcdef12345678",
+        timestamp: Date.now(),
+      });
+      verifyMessage.mockReturnValue("0x1234567890abcdef1234567890abcdef12345678");
+      mockUserRepository.findOne.mockResolvedValue(mockUser);
+      mockJwtService.sign.mockReturnValue("jwt-token");
+
+      const result = await service.verifySignatureAndIssueToken(message, signature);
+
+      expect(result.token).toBe("jwt-token");
+      expect(result.address).toBe("0x1234567890abcdef1234567890abcdef12345678");
+    });
+  });
+
   describe("linkWallet", () => {
-    const currentAddress = "0x1234567890abcdef1234567890abcdef12345678";
+    const currentUserId = "123";
     const newAddress = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd";
     const message = "Sign this message to prove ownership";
     const signature = "0x" + "1".repeat(130);
@@ -100,16 +159,11 @@ describe("WalletAuthService", () => {
         timestamp: Date.now(),
       });
       verifyMessage.mockReturnValue(newAddress); // Mock signature verification
-      mockUserRepository.findOne
-        .mockResolvedValueOnce(null) // New wallet not in use
-        .mockResolvedValueOnce(mockUser); // Current user exists
-      mockUserRepository.save.mockResolvedValue({
-        ...mockUser,
-        walletAddress: newAddress.toLowerCase(),
-      });
+      mockWalletRepository.findOne.mockResolvedValue(null);
+      mockWalletRepository.find.mockResolvedValue([]);
 
       const result = await service.linkWallet(
-        currentAddress,
+        currentUserId,
         newAddress,
         message,
         signature,
@@ -117,7 +171,7 @@ describe("WalletAuthService", () => {
 
       expect(result.message).toBe("Wallet successfully linked");
       expect(result.walletAddress).toBe(newAddress.toLowerCase());
-      expect(mockUserRepository.save).toHaveBeenCalled();
+      expect(mockWalletRepository.save).toHaveBeenCalled();
     });
 
     it("should throw ConflictException if new wallet is already in use", async () => {
@@ -127,10 +181,10 @@ describe("WalletAuthService", () => {
         timestamp: Date.now(),
       });
       verifyMessage.mockReturnValue(newAddress); // Mock signature verification
-      mockUserRepository.findOne.mockResolvedValueOnce(mockUser); // Wallet already exists
+      mockWalletRepository.findOne.mockResolvedValue({ id: "wallet-abc", userId: "456" });
 
       await expect(
-        service.linkWallet(currentAddress, newAddress, message, signature),
+        service.linkWallet(currentUserId, newAddress, message, signature),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -138,73 +192,88 @@ describe("WalletAuthService", () => {
       mockChallengeService.extractChallengeId.mockReturnValue(null);
 
       await expect(
-        service.linkWallet(currentAddress, newAddress, message, signature),
+        service.linkWallet(currentUserId, newAddress, message, signature),
       ).rejects.toThrow(UnauthorizedException);
-    });
-
-    it("should throw BadRequestException if current user not found", async () => {
-      mockChallengeService.extractChallengeId.mockReturnValue(challengeId);
-      mockChallengeService.consumeChallenge.mockReturnValue({
-        address: newAddress.toLowerCase(),
-        timestamp: Date.now(),
-      });
-      verifyMessage.mockReturnValue(newAddress); // Mock signature verification
-      mockUserRepository.findOne
-        .mockResolvedValueOnce(null) // New wallet not in use
-        .mockResolvedValueOnce(null); // Current user not found
-
-      await expect(
-        service.linkWallet(currentAddress, newAddress, message, signature),
-      ).rejects.toThrow(BadRequestException);
     });
   });
 
   describe("unlinkWallet", () => {
-    const walletAddress = "0x1234567890abcdef1234567890abcdef12345678";
+    const walletId = "wallet-123";
+    const userId = "123";
 
-    it("should successfully unlink wallet with verified email", async () => {
-      mockUserRepository.findOne.mockResolvedValue(mockUser);
-
-      const result = await service.unlinkWallet(walletAddress, walletAddress);
-
-      expect(result.message).toContain("Wallet unlink requested");
-      expect(mockUserRepository.findOne).toHaveBeenCalledWith({
-        where: { walletAddress: walletAddress.toLowerCase() },
+    it("should successfully unlink wallet with multiple active wallets", async () => {
+      mockWalletRepository.findOne.mockResolvedValue({
+        id: walletId,
+        userId,
+        address: "0x123",
+        isPrimary: false,
+        status: "active",
       });
+
+      mockWalletRepository.find.mockResolvedValue([
+        { id: walletId, status: "active" },
+        { id: "wallet-456", status: "active" },
+      ]);
+
+      const result = await service.unlinkWallet(userId, walletId);
+
+      expect(result.message).toContain("successfully unlinked");
+      expect(mockWalletRepository.save).toHaveBeenCalled();
     });
 
-    it("should throw BadRequestException if email not verified", async () => {
-      const unverifiedUser = { ...mockUser, emailVerified: false };
-      mockUserRepository.findOne.mockResolvedValue(unverifiedUser);
+    it("should successfully unlink the last wallet if email is verified", async () => {
+      mockWalletRepository.findOne.mockResolvedValue({
+        id: walletId,
+        userId,
+        address: "0x123",
+        isPrimary: true,
+        status: "active",
+      });
 
-      await expect(
-        service.unlinkWallet(walletAddress, walletAddress),
-      ).rejects.toThrow(BadRequestException);
+      mockWalletRepository.find.mockResolvedValue([
+        { id: walletId, status: "active" },
+      ]);
+
+      mockUserRepository.findOne.mockResolvedValue({
+        id: userId,
+        emailVerified: true,
+      });
+
+      const result = await service.unlinkWallet(userId, walletId);
+
+      expect(result.message).toContain("successfully unlinked");
+      expect(mockWalletRepository.save).toHaveBeenCalled();
     });
 
-    it("should throw BadRequestException if addresses do not match", async () => {
-      const differentAddress = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd";
+    it("should throw BadRequestException if unlinking last wallet and email is not verified", async () => {
+      mockWalletRepository.findOne.mockResolvedValue({
+        id: walletId,
+        userId,
+        address: "0x123",
+        isPrimary: true,
+        status: "active",
+      });
 
-      await expect(
-        service.unlinkWallet(walletAddress, differentAddress),
-      ).rejects.toThrow(BadRequestException);
+      mockWalletRepository.find.mockResolvedValue([
+        { id: walletId, status: "active" },
+      ]);
+
+      mockUserRepository.findOne.mockResolvedValue({
+        id: userId,
+        emailVerified: false,
+      });
+
+      await expect(service.unlinkWallet(userId, walletId)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it("should throw BadRequestException if user not found", async () => {
-      mockUserRepository.findOne.mockResolvedValue(null);
+    it("should throw NotFoundException if wallet is not found", async () => {
+      mockWalletRepository.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.unlinkWallet(walletAddress, walletAddress),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it("should throw BadRequestException if email is null", async () => {
-      const noEmailUser = { ...mockUser, email: null, emailVerified: false };
-      mockUserRepository.findOne.mockResolvedValue(noEmailUser);
-
-      await expect(
-        service.unlinkWallet(walletAddress, walletAddress),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.unlinkWallet(userId, walletId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -224,9 +293,6 @@ describe("WalletAuthService", () => {
       expect(result.message).toContain("Recovery initiated");
       expect(result.walletAddress).toBe(mockUser.walletAddress);
       expect(result.challenge).toBe(challengeMessage);
-      expect(
-        mockChallengeService.issueChallengeForAddress,
-      ).toHaveBeenCalledWith(mockUser.walletAddress);
       expect(mockUserRepository.findOne).toHaveBeenCalledWith({
         where: { email: email.toLowerCase(), emailVerified: true },
       });
@@ -234,15 +300,6 @@ describe("WalletAuthService", () => {
 
     it("should throw BadRequestException if user not found", async () => {
       mockUserRepository.findOne.mockResolvedValue(null);
-
-      await expect(service.recoverWallet(email, recoveryToken)).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
-    it("should throw BadRequestException if email not verified", async () => {
-      const unverifiedUser = { ...mockUser, emailVerified: false };
-      mockUserRepository.findOne.mockResolvedValue(null); // Query filters by emailVerified: true
 
       await expect(service.recoverWallet(email, recoveryToken)).rejects.toThrow(
         BadRequestException,

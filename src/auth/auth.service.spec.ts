@@ -3,6 +3,7 @@ import { AuthService } from "./auth.service";
 import { JwtService } from "@nestjs/jwt";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { User, UserRole } from "../user/entities/user.entity";
+import { TokenBlacklistService } from "./token-blacklist.service";
 import { Repository } from "typeorm";
 import {
   ConflictException,
@@ -33,7 +34,7 @@ describe("AuthService", () => {
     role: UserRole.USER,
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  } as any;
 
   const mockJwtService = {
     sign: jest.fn(),
@@ -43,6 +44,10 @@ describe("AuthService", () => {
     findOne: jest.fn(),
     save: jest.fn(),
     create: jest.fn(),
+  };
+
+  const mockTokenBlacklistService = {
+    revoke: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -56,6 +61,10 @@ describe("AuthService", () => {
         {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
+        },
+        {
+          provide: TokenBlacklistService,
+          useValue: mockTokenBlacklistService,
         },
       ],
     }).compile();

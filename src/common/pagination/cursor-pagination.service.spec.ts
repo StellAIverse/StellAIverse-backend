@@ -38,6 +38,7 @@ describe("CursorPaginationService", () => {
   describe("paginateWithCursor", () => {
     it("should handle forward pagination correctly", async () => {
       const mockQueryBuilder = {
+        alias: "TestEntity",
         select: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
@@ -71,6 +72,7 @@ describe("CursorPaginationService", () => {
 
     it("should handle backward pagination correctly", async () => {
       const mockQueryBuilder = {
+        alias: "TestEntity",
         select: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
