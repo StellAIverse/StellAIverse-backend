@@ -3,10 +3,10 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { JwtService } from "@nestjs/jwt";
 import { User } from "../../user/entities/user.entity";
-import { RefreshToken, TwoFactorAuth } from "../../auth/entities/auth.entity";
-import { EnhancedAuthService } from "../../auth/enhanced-auth.service";
-import { EmailService } from "../../auth/email.service";
-import { RegisterDto, LoginDto } from "../../auth/dto/auth.dto";
+import { RefreshToken, TwoFactorAuth } from "../src/core/auth/entities/auth.entity";
+import { EnhancedAuthService } from "../src/core/auth/enhanced-auth.service";
+import { EmailService } from "../src/core/auth/email.service";
+import { RegisterDto, LoginDto } from "../src/core/auth/dto/auth.dto";
 import { KycStatus } from "../../user/entities/user.entity";
 
 describe("EnhancedAuthService", () => {

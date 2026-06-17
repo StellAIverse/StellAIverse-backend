@@ -1,7 +1,7 @@
 import { DataSource } from "typeorm";
 import { User } from "../user/entities/user.entity";
-import { EmailVerification } from "../auth/entities/email-verification.entity";
-import { Wallet } from "../auth/entities/wallet.entity";
+import { EmailVerification } from "../core/auth/entities/email-verification.entity";
+import { Wallet } from "../core/auth/entities/wallet.entity";
 import { SignedPayload } from "../oracle/entities/signed-payload.entity";
 import { SubmissionNonce } from "../oracle/entities/submission-nonce.entity";
 import { AgentEvent } from "../audit/entities/agent-event.entity";

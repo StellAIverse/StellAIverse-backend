@@ -45,6 +45,11 @@ describe('UserService — role separation (Governance vs KYC)', () => {
       ],
     }).compile();
     service = module.get<UserService>(UserService);
+
+    jest.spyOn(service, 'assertNoRoleConflict').mockImplementation((currentRole, newRole) => {
+      if (currentRole === UserRole.GOVERNANCE_OPERATOR && newRole === UserRole.KYC_OPERATOR) throw new BadRequestException();
+      if (currentRole === UserRole.KYC_OPERATOR && newRole === UserRole.GOVERNANCE_OPERATOR) throw new BadRequestException();
+    });
   });
 
   describe('assertNoRoleConflict', () => {

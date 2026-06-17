@@ -8,7 +8,7 @@ import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 
 // Modules
-import { AuthModule } from "./auth/auth.module";
+import { AuthModule } from "./core/auth/auth.module";
 import { UserModule } from "./user/user.module";
 import { ProfileModule } from "./profile/profile.module";
 import { AuditModule } from "./audit/audit.module";
@@ -20,8 +20,8 @@ import { AlertsModule } from "./alerts/alerts.module";
 
 // Auth entities
 import { User } from "./user/entities/user.entity";
-import { EmailVerification } from "./auth/entities/email-verification.entity";
-import { Wallet } from "./auth/entities/wallet.entity";
+import { EmailVerification } from "./core/auth/entities/email-verification.entity";
+import { Wallet } from "./core/auth/entities/wallet.entity";
 
 // Oracle entities
 import { SignedPayload } from "./oracle/entities/signed-payload.entity";

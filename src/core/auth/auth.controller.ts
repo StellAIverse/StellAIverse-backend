@@ -33,9 +33,9 @@ import { LinkWalletDto } from "./dto/link-wallet.dto";
 import { UnlinkWalletDto } from "./dto/unlink-wallet.dto";
 import { RecoverWalletDto } from "./dto/recover-wallet.dto";
 import { Throttle } from "@nestjs/throttler";
-import { SensitiveRateLimit } from "../common/decorators/rate-limit.decorator";
-import { Roles, Role } from "../common/decorators/roles.decorator";
-import { RolesGuard } from "../common/guard/roles.guard";
+import { SensitiveRateLimit } from "src/common/decorators/rate-limit.decorator";
+import { Roles, Role } from "src/common/decorators/roles.decorator";
+import { RolesGuard } from "src/common/guard/roles.guard";
 
 export class RequestChallengeDto {
   @ApiProperty({

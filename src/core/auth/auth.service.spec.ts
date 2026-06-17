@@ -2,13 +2,14 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { AuthService } from "./auth.service";
 import { JwtService } from "@nestjs/jwt";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { User, UserRole } from "../user/entities/user.entity";
+import { User, UserRole } from "src/user/entities/user.entity";
 import { Repository } from "typeorm";
 import {
   ConflictException,
   UnauthorizedException,
   BadRequestException,
 } from "@nestjs/common";
+import { TokenBlacklistService } from "./token-blacklist.service";
 
 // Mock bcrypt
 jest.mock("bcrypt", () => ({
@@ -23,8 +24,8 @@ describe("AuthService", () => {
   let jwtService: JwtService;
   let userRepository: Repository<User>;
 
-  const mockUser: User = {
-    id: "123",
+  const mockUser = {
+    id: "user-id",
     username: "testuser",
     walletAddress: "email_test@example.com",
     email: "test@example.com",
@@ -33,7 +34,7 @@ describe("AuthService", () => {
     role: UserRole.USER,
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  } as unknown as User;
 
   const mockJwtService = {
     sign: jest.fn(),
@@ -43,6 +44,11 @@ describe("AuthService", () => {
     findOne: jest.fn(),
     save: jest.fn(),
     create: jest.fn(),
+  };
+
+  const mockTokenBlacklistService = {
+    blacklistToken: jest.fn(),
+    isBlacklisted: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -56,6 +62,10 @@ describe("AuthService", () => {
         {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
+        },
+        {
+          provide: TokenBlacklistService,
+          useValue: mockTokenBlacklistService,
         },
       ],
     }).compile();
@@ -91,10 +101,11 @@ describe("AuthService", () => {
       expect(result).toEqual({
         token: "jwt-token",
         user: {
-          id: "123",
+          id: "user-id",
           email: "test@example.com",
           username: "testuser",
           role: UserRole.USER,
+          referralCode: undefined,
         },
       });
       expect(mockUserRepository.findOne).toHaveBeenCalledWith({
@@ -148,10 +159,11 @@ describe("AuthService", () => {
       expect(result).toEqual({
         token: "jwt-token",
         user: {
-          id: "123",
+          id: "user-id",
           email: "test@example.com",
           username: "testuser",
           role: UserRole.USER,
+          referralCode: undefined,
         },
       });
       expect(bcrypt.compare).toHaveBeenCalledWith(
@@ -230,10 +242,11 @@ describe("AuthService", () => {
       expect(result).toEqual({
         isAuthenticated: true,
         user: {
-          id: "123",
+          id: "user-id",
           email: "test@example.com",
           username: "testuser",
           role: UserRole.USER,
+          referralCode: undefined,
         },
       });
     });

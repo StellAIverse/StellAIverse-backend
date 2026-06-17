@@ -12,8 +12,8 @@ import {
   HttpStatus,
   BadRequestException,
 } from "@nestjs/common";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { JwtAuthGuard } from "../core/auth/guards/jwt-auth.guard";
+import { CurrentUser } from "../core/auth/decorators/current-user.decorator";
 import { User } from "../user/entities/user.entity";
 import { PositionTrackingService } from "./services/position-tracking.service";
 import { YieldOptimizationService } from "./services/yield-optimization.service";

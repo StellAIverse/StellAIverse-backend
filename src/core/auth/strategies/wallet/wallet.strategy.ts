@@ -16,7 +16,7 @@ import {
   WalletCredentials,
 } from "../interfaces/auth-strategy.interface";
 import { ChallengeService } from "../../challenge.service";
-import { User } from "../../../user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
 
 /**
  * Wallet-based authentication strategy

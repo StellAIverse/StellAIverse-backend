@@ -10,11 +10,12 @@ import {
   JoinColumn,
 } from "typeorm";
 import { ProvenanceRecord } from "../../audit/entities/provenance-record.entity";
-import { Wallet } from "../../auth/entities/wallet.entity";
+import { Wallet } from "../../core/auth/entities/wallet.entity";
 
 export enum UserRole {
   USER = "user",
   KYC_OPERATOR = "kyc_operator",
+  GOVERNANCE_OPERATOR = "governance_operator",
   ADMIN = "admin",
 }
 
