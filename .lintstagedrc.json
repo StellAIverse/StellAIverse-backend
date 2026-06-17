@@ -1,0 +1,9 @@
+{
+  "*.ts": ["eslint --fix", "prettier --write"],
+  "*.json": ["prettier --write"],
+  "*.md": ["prettier --write"],
+  "src/risk-management/**/*.ts": [
+    "npm run test -- src/risk-management --coverage"
+  ],
+  "src/**/*.ts": ["npm run build"]
+}
