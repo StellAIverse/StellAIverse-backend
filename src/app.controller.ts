@@ -11,6 +11,7 @@ import { AppService } from "./app.service";
 import { JwtAuthGuard } from "./auth/jwt.guard";
 import { RateLimit } from "./common/decorators/rate-limit.decorator";
 import { RiskManagementHealthIndicator } from "./risk-management/health/risk-management.health";
+import { Public } from "./common/decorators/public.decorator";
 
 @ApiTags("Health")
 @Controller()
@@ -21,6 +22,7 @@ export class AppController {
     private riskManagementHealth: RiskManagementHealthIndicator,
   ) {}
 
+  @Public()
   @Get("health")
   @HealthCheck()
   @RateLimit({ level: "free", limit: 2, windowMs: 60000 }) // Max 2 requests per minute for health
@@ -50,6 +52,7 @@ export class AppController {
     return this.health.check([() => this.riskManagementHealth.isHealthy()]);
   }
 
+  @Public()
   @Get("info")
   @RateLimit({ level: "standard" }) // Default standard level
   @ApiOperation({

@@ -51,6 +51,7 @@ import { AlertDeliveryLog } from "./alerts/entities/alert-delivery-log.entity";
 import { ThrottlerUserIpGuard } from "./common/guard/throttler.guard";
 import { RolesGuard } from "./common/guard/roles.guard";
 import { KycGuard } from "./common/guard/kyc.guard";
+import { StrategyAuthGuard } from "./auth/guards/strategy-auth.guard";
 import { SubmissionVerifierService } from "./oracle/submission-verifier.service";
 
 @Module({
@@ -138,6 +139,17 @@ import { SubmissionVerifierService } from "./oracle/submission-verifier.service"
     {
       provide: APP_GUARD,
       useClass: ThrottlerUserIpGuard,
+    },
+    /**
+     * StrategyAuthGuard is the default authentication guard for all routes.
+     * It validates JWT tokens through the StrategyRegistry and supports
+     * multiple auth types (wallet, traditional, OAuth, API key).
+     *
+     * Routes that should be publicly accessible must be decorated with @Public().
+     */
+    {
+      provide: APP_GUARD,
+      useClass: StrategyAuthGuard,
     },
     {
       provide: APP_GUARD,
