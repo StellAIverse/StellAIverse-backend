@@ -2,14 +2,36 @@ import { NodeSDK } from "@opentelemetry/sdk-node";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
-import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
-import { trace, SpanStatusCode, Span } from "@opentelemetry/api";
+import {
+  BatchSpanProcessor,
+  ParentBasedSampler,
+  TraceIdRatioBasedSampler,
+  AlwaysOnSampler,
+} from "@opentelemetry/sdk-trace-base";
+import { trace, SpanStatusCode, Span, propagation, context } from "@opentelemetry/api";
+import { W3CTraceContextPropagator } from "@opentelemetry/core";
+
+// Configure global context propagation
+propagation.setGlobalPropagator(new W3CTraceContextPropagator());
+
+// Sampling configuration
+const samplingRatio = parseFloat(process.env.OTEL_TRACE_SAMPLING_RATIO || "0.1");
+const isProduction = process.env.NODE_ENV === "production";
+
+const sampler = isProduction
+  ? new ParentBasedSampler({
+      root: new TraceIdRatioBasedSampler(samplingRatio),
+    })
+  : new AlwaysOnSampler();
 
 // Configure the trace exporter
 const traceExporter = new OTLPTraceExporter({
   url:
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
     "http://localhost:4318/v1/traces",
+  headers: process.env.OTEL_EXPORTER_OTLP_HEADERS
+    ? JSON.parse(process.env.OTEL_EXPORTER_OTLP_HEADERS)
+    : {},
 });
 
 export const sdk = new NodeSDK({
@@ -18,6 +40,7 @@ export const sdk = new NodeSDK({
     "service.version": process.env.npm_package_version || "1.0.0",
     "deployment.environment": process.env.NODE_ENV || "development",
   }),
+  sampler,
   spanProcessor: new BatchSpanProcessor(traceExporter),
   instrumentations: [
     getNodeAutoInstrumentations({
