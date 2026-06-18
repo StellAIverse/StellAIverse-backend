@@ -19,6 +19,7 @@ import { PortfolioModule } from "./portfolio/portfolio.module";
 import { RiskManagementModule } from "./risk-management/risk-management.module";
 import { DeFiModule } from "./defi/defi.module";
 import { AlertsModule } from "./alerts/alerts.module";
+import { HealthModule } from "./health/health.module";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 
 // Auth entities
@@ -131,6 +132,7 @@ import { SubmissionVerifierService } from "./oracle/submission-verifier.service"
     RiskManagementModule,
     DeFiModule,
     AlertsModule,
+    HealthModule,
   ],
 
   controllers: [AppController],
