@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   Index,
   ManyToOne,
   OneToMany,
@@ -19,6 +20,12 @@ export enum PortfolioStatus {
   ACTIVE = "active",
   INACTIVE = "inactive",
   ARCHIVED = "archived",
+}
+
+export enum PortfolioType {
+  BALANCED = "balanced",
+  AGGRESSIVE = "aggressive",
+  CONSERVATIVE = "conservative",
 }
 
 @Entity("portfolios")
@@ -39,6 +46,17 @@ export class Portfolio {
     default: PortfolioStatus.ACTIVE,
   })
   status: PortfolioStatus;
+
+  @Column({
+    type: "enum",
+    enum: PortfolioType,
+    default: PortfolioType.BALANCED,
+  })
+  type: PortfolioType;
+
+  // Initial allocation captured at creation time
+  @Column({ type: "jsonb", nullable: true })
+  initialAllocation: Record<string, number>;
 
   // Total portfolio value
   @Column({ type: "decimal", precision: 18, scale: 2, default: 0 })
@@ -74,6 +92,10 @@ export class Portfolio {
 
   @Column({ nullable: true })
   lastRebalanceDate: Date;
+
+  // Soft-delete timestamp; set when a portfolio is archived/deleted
+  @DeleteDateColumn()
+  deletedAt: Date;
 
   // Relations
   @ManyToOne(() => User, { onDelete: "CASCADE" })

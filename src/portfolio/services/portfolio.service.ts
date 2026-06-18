@@ -2,9 +2,10 @@ import { Injectable, Logger, BadRequestException } from "@nestjs/common";
 import {
   OptimizationFailedException,
   PortfolioNotFoundException,
+  DuplicatePortfolioNameException,
 } from "../exceptions/portfolio.exceptions";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { ILike, Not, Repository } from "typeorm";
 import { Portfolio } from "../entities/portfolio.entity";
 import { PortfolioAsset } from "../entities/portfolio-asset.entity";
 import {
@@ -13,9 +14,14 @@ import {
   OptimizationStatus,
 } from "../entities/optimization-history.entity";
 import { RiskProfile } from "../entities/risk-profile.entity";
-import { CreatePortfolioDto, UpdatePortfolioDto } from "../dto/portfolio.dto";
+import {
+  CreatePortfolioDto,
+  UpdatePortfolioDto,
+  QueryPortfolioDto,
+  PaginatedPortfoliosDto,
+} from "../dto/portfolio.dto";
 import { CreateOptimizationDto } from "../dto/optimization.dto";
-import { PortfolioStatus } from "../entities/portfolio.entity";
+import { PortfolioStatus, PortfolioType } from "../entities/portfolio.entity";
 import { ModernPortfolioTheory } from "../algorithms/modern-portfolio-theory";
 import { BlackLittermanModel } from "../algorithms/black-litterman";
 import { ConstraintOptimizer } from "../algorithms/constraint-optimizer";
@@ -36,21 +42,34 @@ export class PortfolioService {
   ) {}
 
   /**
-   * Create a new portfolio for a user
+   * Create a new portfolio for a user.
+   *
+   * Validates that the portfolio name is unique and applies sensible
+   * defaults (status, type and allocation maps) before persisting.
    */
   async createPortfolio(
     userId: string,
     dto: CreatePortfolioDto,
   ): Promise<Portfolio> {
+    this.logger.log(`Creating portfolio "${dto.name}" for user ${userId}`);
+
+    await this.assertNameIsUnique(dto.name);
+
+    const initialAllocation = dto.initialAllocation || {};
+
     const portfolio = this.portfolioRepository.create({
       ...dto,
       userId,
       status: PortfolioStatus.ACTIVE,
-      currentAllocation: {},
+      type: dto.type || PortfolioType.BALANCED,
+      initialAllocation,
+      currentAllocation: { ...initialAllocation },
       targetAllocation: {},
     });
 
-    return this.portfolioRepository.save(portfolio);
+    const saved = await this.portfolioRepository.save(portfolio);
+    this.logger.log(`Portfolio ${saved.id} created for user ${userId}`);
+    return saved;
   }
 
   /**
@@ -81,7 +100,45 @@ export class PortfolioService {
   }
 
   /**
-   * Update portfolio
+   * List a user's portfolios with pagination and optional filtering.
+   *
+   * Supports filtering by status, type and a case-insensitive name search.
+   * Soft-deleted portfolios are excluded automatically.
+   */
+  async listPortfolios(
+    userId: string,
+    query: QueryPortfolioDto = {},
+  ): Promise<PaginatedPortfoliosDto> {
+    const page = query.page && query.page > 0 ? query.page : 1;
+    const limit = query.limit && query.limit > 0 ? query.limit : 20;
+
+    const where: Record<string, unknown> = { userId };
+    if (query.status) where.status = query.status;
+    if (query.type) where.type = query.type;
+    if (query.search) where.name = ILike(`%${query.search}%`);
+
+    const [data, total] = await this.portfolioRepository.findAndCount({
+      where,
+      relations: ["assets", "performanceMetrics"],
+      order: { createdAt: "DESC" },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      data: data as unknown as PaginatedPortfoliosDto["data"],
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 0,
+    };
+  }
+
+  /**
+   * Update portfolio.
+   *
+   * When the name changes it is re-validated for uniqueness against other
+   * portfolios.
    */
   async updatePortfolio(
     portfolioId: string,
@@ -89,9 +146,28 @@ export class PortfolioService {
   ): Promise<Portfolio> {
     const portfolio = await this.getPortfolio(portfolioId);
 
+    if (dto.name && dto.name !== portfolio.name) {
+      await this.assertNameIsUnique(dto.name, portfolioId);
+    }
+
     Object.assign(portfolio, dto);
 
-    return this.portfolioRepository.save(portfolio);
+    const saved = await this.portfolioRepository.save(portfolio);
+    this.logger.log(`Portfolio ${portfolioId} updated`);
+    return saved;
+  }
+
+  /**
+   * Archive a portfolio (soft delete via status change).
+   *
+   * The record is retained for historical reporting but flagged as archived.
+   */
+  async archivePortfolio(portfolioId: string): Promise<Portfolio> {
+    const portfolio = await this.getPortfolio(portfolioId);
+    portfolio.status = PortfolioStatus.ARCHIVED;
+    const saved = await this.portfolioRepository.save(portfolio);
+    this.logger.log(`Portfolio ${portfolioId} archived`);
+    return saved;
   }
 
   /**
@@ -414,9 +490,35 @@ export class PortfolioService {
   }
 
   /**
-   * Delete portfolio
+   * Soft-delete a portfolio.
+   *
+   * Uses TypeORM soft removal so the row is retained (with a `deletedAt`
+   * timestamp) and excluded from subsequent queries.
    */
   async deletePortfolio(portfolioId: string): Promise<void> {
-    await this.portfolioRepository.delete(portfolioId);
+    // Ensure it exists (and is not already removed) before deleting.
+    await this.getPortfolio(portfolioId);
+    await this.portfolioRepository.softDelete(portfolioId);
+    this.logger.log(`Portfolio ${portfolioId} soft-deleted`);
+  }
+
+  /**
+   * Ensure no other portfolio already uses the given name.
+   *
+   * @param name        The candidate portfolio name.
+   * @param excludeId   Optional portfolio id to exclude (used on update).
+   */
+  private async assertNameIsUnique(
+    name: string,
+    excludeId?: string,
+  ): Promise<void> {
+    const existing = await this.portfolioRepository.findOne({
+      where: excludeId ? { name, id: Not(excludeId) } : { name },
+    });
+
+    if (existing) {
+      this.logger.warn(`Duplicate portfolio name rejected: "${name}"`);
+      throw new DuplicatePortfolioNameException(name);
+    }
   }
 }

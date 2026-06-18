@@ -22,7 +22,11 @@ import { PerformanceAnalyticsService } from "./services/performance-analytics.se
 import { BacktestingService } from "./services/backtesting.service";
 import { MLPredictionService } from "./services/ml-prediction.service";
 import { PortfolioOwnerGuard } from "src/common/guard/portfolio-owner.guard";
-import { CreatePortfolioDto, UpdatePortfolioDto } from "./dto/portfolio.dto";
+import {
+  CreatePortfolioDto,
+  UpdatePortfolioDto,
+  QueryPortfolioDto,
+} from "./dto/portfolio.dto";
 import { AddAssetToPortfolioDto } from "./dto/portfolio-asset.dto";
 import {
   ApproveOptimizationDto,
@@ -58,9 +62,14 @@ export class PortfolioController {
   }
 
   @Get("portfolios")
-  @ApiOperation({ summary: "Get all portfolios for user" })
-  async getUserPortfolios(@Request() req: any) {
-    return this.portfolioService.getUserPortfolios(req.user.id);
+  @ApiOperation({
+    summary: "List portfolios for user with pagination and filtering",
+  })
+  async getUserPortfolios(
+    @Request() req: any,
+    @Query() query: QueryPortfolioDto,
+  ) {
+    return this.portfolioService.listPortfolios(req.user.id, query);
   }
 
   @Get("portfolios/:id")
@@ -80,9 +89,16 @@ export class PortfolioController {
     return this.portfolioService.updatePortfolio(portfolioId, dto);
   }
 
+  @Post("portfolios/:id/archive")
+  @ApiOperation({ summary: "Archive portfolio (soft delete via status)" })
+  @UseGuards(PortfolioOwnerGuard)
+  async archivePortfolio(@Param("id") portfolioId: string) {
+    return this.portfolioService.archivePortfolio(portfolioId);
+  }
+
   @Delete("portfolios/:id")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: "Delete portfolio" })
+  @ApiOperation({ summary: "Soft-delete portfolio" })
   @UseGuards(PortfolioOwnerGuard)
   async deletePortfolio(@Param("id") portfolioId: string) {
     return this.portfolioService.deletePortfolio(portfolioId);
