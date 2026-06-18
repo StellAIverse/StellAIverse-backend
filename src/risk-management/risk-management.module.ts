@@ -5,6 +5,7 @@ import { RiskManagementController } from "./risk-management.controller";
 import { CircuitBreakerService } from "./circuit-breaker.service";
 import { AlertsModule } from "../alerts/alerts.module";
 import { AlertPublisherService } from "../alerts/alert-publisher.service";
+import { RiskManagementHealthIndicator } from "./risk-management.health-indicator";
 
 @Module({
   imports: [AlertsModule],
