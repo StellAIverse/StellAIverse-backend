@@ -122,6 +122,12 @@ export class AuthController {
     };
   }
 
+  @Public()
+  @Post("test-error")
+  async testError() {
+    throw new Error("Sentry integration test error");
+  }
+
   // Wallet Authentication Endpoints
 
   @Public()
