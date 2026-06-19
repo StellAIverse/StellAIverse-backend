@@ -12,15 +12,19 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Response,
 } from "@nestjs/common";
 import { ApiTags, ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
+import { Response as ExpressResponse } from "express";
 import { JwtAuthGuard } from "src/auth/jwt.guard";
 import { PortfolioService } from "./services/portfolio.service";
 import { RebalancingService } from "./services/rebalancing.service";
 import { PerformanceAnalyticsService } from "./services/performance-analytics.service";
 import { BacktestingService } from "./services/backtesting.service";
 import { MLPredictionService } from "./services/ml-prediction.service";
+import { TradingTransactionService } from "./services/trading-transaction.service";
+import { TransactionHistoryService } from "./services/transaction-history.service";
 import { PortfolioOwnerGuard } from "src/common/guard/portfolio-owner.guard";
 import {
   CreatePortfolioDto,
@@ -38,6 +42,11 @@ import {
 } from "./dto/rebalancing.dto";
 import { GetPerformanceMetricsDto } from "./dto/performance.dto";
 import { CreateBacktestDto } from "./dto/backtest.dto";
+import {
+  CreateTransactionDto,
+  TransactionFilterDto,
+  TransactionExportDto,
+} from "./dto/transaction.dto";
 
 @Controller("portfolio")
 @ApiTags("Portfolio Optimization")
@@ -51,6 +60,8 @@ export class PortfolioController {
     private performanceService: PerformanceAnalyticsService,
     private backtestService: BacktestingService,
     private mlService: MLPredictionService,
+    private tradingTransactionService: TradingTransactionService,
+    private transactionHistoryService: TransactionHistoryService,
   ) {}
 
   // Portfolio Management Endpoints
@@ -378,5 +389,149 @@ export class PortfolioController {
   })
   async getPredictorStats() {
     return this.mlService.getPredictorStats();
+  }
+
+  // Transaction Tracking Endpoints
+
+  @Post("portfolios/:portfolioId/transactions")
+  @ApiOperation({ summary: "Record a new transaction" })
+  @UseGuards(PortfolioOwnerGuard)
+  async recordTransaction(
+    @Request() req: any,
+    @Param("portfolioId") portfolioId: string,
+    @Body() dto: CreateTransactionDto,
+  ) {
+    return this.tradingTransactionService.recordTransaction(
+      portfolioId,
+      req.user.id,
+      dto,
+    );
+  }
+
+  @Get("portfolios/:portfolioId/transactions")
+  @ApiOperation({ summary: "Get transaction history with filtering" })
+  @UseGuards(PortfolioOwnerGuard)
+  async getTransactionHistory(
+    @Request() req: any,
+    @Param("portfolioId") portfolioId: string,
+    @Query() filter: TransactionFilterDto,
+  ) {
+    return this.transactionHistoryService.getTransactionHistory(
+      portfolioId,
+      req.user.id,
+      filter,
+    );
+  }
+
+  @Get("portfolios/:portfolioId/transactions/:transactionId")
+  @ApiOperation({ summary: "Get a single transaction" })
+  @UseGuards(PortfolioOwnerGuard)
+  async getTransaction(
+    @Request() req: any,
+    @Param("portfolioId") portfolioId: string,
+    @Param("transactionId") transactionId: string,
+  ) {
+    return this.transactionHistoryService.getTransaction(
+      transactionId,
+      portfolioId,
+      req.user.id,
+    );
+  }
+
+  @Get("portfolios/:portfolioId/transactions/cost-basis/:ticker")
+  @ApiOperation({ summary: "Calculate cost basis for a specific ticker" })
+  @UseGuards(PortfolioOwnerGuard)
+  async getCostBasis(
+    @Request() req: any,
+    @Param("portfolioId") portfolioId: string,
+    @Param("ticker") ticker: string,
+    @Query("asOfDate") asOfDate?: string,
+  ) {
+    return this.transactionHistoryService.calculateCostBasis(
+      portfolioId,
+      req.user.id,
+      ticker,
+      asOfDate ? new Date(asOfDate) : undefined,
+    );
+  }
+
+  @Get("portfolios/:portfolioId/transactions/cost-basis")
+  @ApiOperation({ summary: "Calculate cost basis for all holdings" })
+  @UseGuards(PortfolioOwnerGuard)
+  async getAllCostBasis(
+    @Request() req: any,
+    @Param("portfolioId") portfolioId: string,
+  ) {
+    return this.transactionHistoryService.calculateAllCostBasis(
+      portfolioId,
+      req.user.id,
+    );
+  }
+
+  @Get("portfolios/:portfolioId/transactions/export/csv")
+  @ApiOperation({ summary: "Export transactions as CSV" })
+  @UseGuards(PortfolioOwnerGuard)
+  async exportTransactionsCSV(
+    @Request() req: any,
+    @Param("portfolioId") portfolioId: string,
+    @Query() filter: TransactionFilterDto,
+    @Response() res: ExpressResponse,
+  ) {
+    const csv = await this.transactionHistoryService.exportTransactionsAsCSV(
+      portfolioId,
+      req.user.id,
+      filter,
+    );
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="transactions-${portfolioId}-${Date.now()}.csv"`,
+    );
+    res.send(csv);
+  }
+
+  @Get("portfolios/:portfolioId/transactions/export/json")
+  @ApiOperation({ summary: "Export transactions as JSON" })
+  @UseGuards(PortfolioOwnerGuard)
+  async exportTransactionsJSON(
+    @Request() req: any,
+    @Param("portfolioId") portfolioId: string,
+    @Query() filter: TransactionFilterDto,
+  ) {
+    return this.transactionHistoryService.exportTransactionsAsJSON(
+      portfolioId,
+      req.user.id,
+      filter,
+    );
+  }
+
+  @Get("portfolios/:portfolioId/transactions/stats")
+  @ApiOperation({ summary: "Get transaction statistics" })
+  @UseGuards(PortfolioOwnerGuard)
+  async getTransactionStats(
+    @Request() req: any,
+    @Param("portfolioId") portfolioId: string,
+  ) {
+    return this.transactionHistoryService.getTransactionStats(
+      portfolioId,
+      req.user.id,
+    );
+  }
+
+  @Post("portfolios/:portfolioId/transactions/:transactionId/archive")
+  @ApiOperation({ summary: "Archive a transaction" })
+  @UseGuards(PortfolioOwnerGuard)
+  async archiveTransaction(
+    @Request() req: any,
+    @Param("portfolioId") portfolioId: string,
+    @Param("transactionId") transactionId: string,
+  ) {
+    await this.transactionHistoryService.archiveTransaction(
+      transactionId,
+      portfolioId,
+      req.user.id,
+    );
+    return { message: "Transaction archived successfully" };
   }
 }

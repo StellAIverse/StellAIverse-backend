@@ -10,6 +10,7 @@ import { OptimizationHistory } from "./entities/optimization-history.entity";
 import { RebalancingEvent } from "./entities/rebalancing-event.entity";
 import { PerformanceMetric } from "./entities/performance-metric.entity";
 import { BacktestResult } from "./entities/backtest-result.entity";
+import { Transaction } from "./entities/transaction.entity";
 
 // Services
 import { PortfolioService } from "./services/portfolio.service";
@@ -17,6 +18,8 @@ import { RebalancingService } from "./services/rebalancing.service";
 import { PerformanceAnalyticsService } from "./services/performance-analytics.service";
 import { BacktestingService } from "./services/backtesting.service";
 import { MLPredictionService } from "./services/ml-prediction.service";
+import { TradingTransactionService } from "./services/trading-transaction.service";
+import { TransactionHistoryService } from "./services/transaction-history.service";
 
 // Controllers
 import { PortfolioController } from "./portfolio.controller";
@@ -32,6 +35,7 @@ import { PortfolioOwnerGuard } from "../common/guard/portfolio-owner.guard";
       RebalancingEvent,
       PerformanceMetric,
       BacktestResult,
+      Transaction,
     ]),
     BullModule.registerQueue(
       {
@@ -57,6 +61,8 @@ import { PortfolioOwnerGuard } from "../common/guard/portfolio-owner.guard";
     PerformanceAnalyticsService,
     BacktestingService,
     MLPredictionService,
+    TradingTransactionService,
+    TransactionHistoryService,
     PortfolioOwnerGuard,
   ],
   controllers: [PortfolioController],
@@ -66,6 +72,8 @@ import { PortfolioOwnerGuard } from "../common/guard/portfolio-owner.guard";
     PerformanceAnalyticsService,
     BacktestingService,
     MLPredictionService,
+    TradingTransactionService,
+    TransactionHistoryService,
   ],
 })
 export class PortfolioModule {}
