@@ -1,10 +1,11 @@
 import { Module, OnModuleInit } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { APP_GUARD } from "@nestjs/core";
+import { APP_GUARD, APP_FILTER } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { TerminusModule } from "@nestjs/terminus";
 import { EventEmitterModule } from "@nestjs/event-emitter";
+import { SentryModule, SentryGlobalFilter } from "@sentry/nestjs/setup";
 
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
@@ -60,6 +61,8 @@ import { SubmissionVerifierService } from "./oracle/submission-verifier.service"
       isGlobal: true,
       envFilePath: ".env",
     }),
+
+    SentryModule.forRoot(),
 
     EventEmitterModule.forRoot(),
 
@@ -136,6 +139,10 @@ import { SubmissionVerifierService } from "./oracle/submission-verifier.service"
 
   providers: [
     AppService,
+    {
+      provide: APP_FILTER,
+      useClass: SentryGlobalFilter,
+    },
     {
       provide: APP_GUARD,
       useClass: ThrottlerUserIpGuard,

@@ -1,3 +1,4 @@
+import "./instrument";
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
@@ -14,7 +15,7 @@ async function bootstrap() {
     await startTracing();
     logger.info("Tracing initialized");
   } catch (error) {
-    logger.warn({ error: error.message }, "Tracing skipped");
+    logger.warn({ error: error.message }, "Tracing initialization failed");
   }
 
   // Create app with appropriate logging
