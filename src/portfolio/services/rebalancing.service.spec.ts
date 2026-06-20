@@ -206,7 +206,13 @@ describe("RebalancingService", () => {
   describe("calculateTransactionCosts", () => {
     it("calculates transaction costs based on trade values", () => {
       const trades = [
-        { ticker: "AAPL", action: "sell", quantity: 2, price: 500, value: 1000 },
+        {
+          ticker: "AAPL",
+          action: "sell" as const,
+          quantity: 2,
+          price: 500,
+          value: 1000,
+        },
       ];
 
       const cost = service.calculateTransactionCosts(trades);
@@ -220,7 +226,13 @@ describe("RebalancingService", () => {
       mockAssetRepo.find.mockResolvedValue([buildAsset()]);
 
       const trades = [
-        { ticker: "AAPL", action: "sell", quantity: 2, price: 500, value: 1000 },
+        {
+          ticker: "AAPL",
+          action: "sell" as const,
+          quantity: 2,
+          price: 500,
+          value: 1000,
+        },
       ];
 
       const tax = await service.calculateTaxImpact("pf-1", trades);

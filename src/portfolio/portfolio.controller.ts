@@ -35,6 +35,7 @@ import {
 import {
   ExecuteRebalancingDto,
   TriggerRebalancingDto,
+  CancelRebalancingDto,
 } from "./dto/rebalancing.dto";
 import { GetPerformanceMetricsDto } from "./dto/performance.dto";
 import { CreateBacktestDto } from "./dto/backtest.dto";
