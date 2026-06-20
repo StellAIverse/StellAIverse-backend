@@ -6,6 +6,7 @@ import {
   IsArray,
   IsJSON,
   IsDateString,
+  IsBoolean,
 } from "class-validator";
 import {
   RebalanceTrigger,
@@ -22,6 +23,10 @@ export class TriggerRebalancingDto {
   @IsOptional()
   @IsString()
   triggerReason?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  dryRun?: boolean;
 
   @IsOptional()
   @IsJSON()
@@ -63,19 +68,22 @@ export class CancelRebalancingDto {
 }
 
 export class RebalancingEventResponseDto {
-  id: string;
-  trigger: RebalanceTrigger;
-  status: RebalanceStatus;
+  id?: string;
+  trigger?: RebalanceTrigger;
+  status?: RebalanceStatus;
   triggerReason?: string;
   allocationBefore: Record<string, number>;
   allocationAfter: Record<string, number>;
   trades: Array<any>;
   estimatedCost?: number;
   actualCost?: number;
+  taxImpact?: number;
   maxAllocationDrift?: number;
+  avgAllocationDrift?: number;
   expectedReturnImprovement?: number;
   volatilityChange?: number;
-  createdAt: Date;
+  createdAt?: Date;
   executedAt?: Date;
   completedAt?: Date;
+  allocationDrift?: Record<string, number>;
 }
