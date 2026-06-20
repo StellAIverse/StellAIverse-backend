@@ -21,8 +21,15 @@ export enum AssetType {
   OTHER = "other",
 }
 
+export enum Chain {
+  ETHEREUM = "ethereum",
+  POLYGON = "polygon",
+  BINANCE = "binance",
+  SOLANA = "solana",
+}
+
 @Entity("portfolio_assets")
-@Index(["portfolioId", "ticker"])
+@Index(["portfolioId", "ticker", "chain"], { unique: true })
 export class PortfolioAsset {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -32,6 +39,13 @@ export class PortfolioAsset {
 
   @Column()
   name: string;
+
+  @Column({
+    type: "enum",
+    enum: Chain,
+    default: Chain.ETHEREUM,
+  })
+  chain: Chain;
 
   @Column({
     type: "enum",

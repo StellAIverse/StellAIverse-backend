@@ -31,7 +31,10 @@ import {
   UpdatePortfolioDto,
   QueryPortfolioDto,
 } from "./dto/portfolio.dto";
-import { AddAssetToPortfolioDto } from "./dto/portfolio-asset.dto";
+import {
+  AddAssetToPortfolioDto,
+  UpdatePortfolioAssetDto,
+} from "./dto/portfolio-asset.dto";
 import {
   ApproveOptimizationDto,
   CreateOptimizationDto,
@@ -115,10 +118,10 @@ export class PortfolioController {
     return this.portfolioService.deletePortfolio(portfolioId);
   }
 
-  // Asset Management Endpoints
+  // Holding Management Endpoints
 
   @Post("portfolios/:portfolioId/assets")
-  @ApiOperation({ summary: "Add asset to portfolio" })
+  @ApiOperation({ summary: "Add holding (asset) to portfolio" })
   @UseGuards(PortfolioOwnerGuard)
   async addAsset(
     @Param("portfolioId") portfolioId: string,
@@ -131,7 +134,30 @@ export class PortfolioController {
       dto.quantity,
       dto.currentPrice,
       dto.costBasis,
+      dto.chain,
     );
+  }
+
+  @Put("portfolios/:portfolioId/assets/:assetId")
+  @ApiOperation({ summary: "Update holding (asset) in portfolio" })
+  @UseGuards(PortfolioOwnerGuard)
+  async updateAsset(
+    @Param("portfolioId") portfolioId: string,
+    @Param("assetId") assetId: string,
+    @Body() dto: UpdatePortfolioAssetDto,
+  ) {
+    return this.portfolioService.updateAsset(portfolioId, assetId, dto);
+  }
+
+  @Delete("portfolios/:portfolioId/assets/:assetId")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Remove holding (asset) from portfolio" })
+  @UseGuards(PortfolioOwnerGuard)
+  async removeAsset(
+    @Param("portfolioId") portfolioId: string,
+    @Param("assetId") assetId: string,
+  ) {
+    return this.portfolioService.removeAsset(portfolioId, assetId);
   }
 
   @Put("portfolios/:portfolioId/assets/:assetId/price")
