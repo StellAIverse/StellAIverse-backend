@@ -2,6 +2,7 @@
 
 import { Injectable, Logger } from "@nestjs/common";
 import { AuditLogService } from "../audit/audit-log.service";
+import { logger } from "../config/logger";
 
 interface OnChainSubmission {
   id: string;
@@ -116,7 +117,7 @@ export class SubmissionVerifierService {
   // -------------------------------------
   private async triggerAlerts(result: any) {
     // 👉 Replace with real integrations
-    console.warn("ALERT: Submission mismatch detected", result);
+    logger.warn({ result }, "ALERT: Submission mismatch detected");
 
     // Example webhook
     // await axios.post(WEBHOOK_URL, result);
