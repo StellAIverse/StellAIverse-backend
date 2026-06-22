@@ -126,8 +126,12 @@ export class PortfolioService {
     const page = query.page && query.page > 0 ? query.page : 1;
     const limit = query.limit && query.limit > 0 ? query.limit : 20;
 
-    const where: Record<string, unknown> = { userId, status: Not(PortfolioStatus.ARCHIVED) };
-    if (query.status && query.status !== PortfolioStatus.ARCHIVED) where.status = query.status;
+    const where: Record<string, unknown> = {
+      userId,
+      status: Not(PortfolioStatus.ARCHIVED),
+    };
+    if (query.status && query.status !== PortfolioStatus.ARCHIVED)
+      where.status = query.status;
     if (query.type) where.type = query.type;
     if (query.search) where.name = ILike(`%${query.search}%`);
 
@@ -210,9 +214,7 @@ export class PortfolioService {
   /**
    * Validate allocation object contains non-negative numeric values.
    */
-  private validateAllocation(
-    allocation: Record<string, number>,
-  ): void {
+  private validateAllocation(allocation: Record<string, number>): void {
     for (const [key, value] of Object.entries(allocation)) {
       if (typeof value !== "number" || value < 0) {
         throw new BadRequestException(
@@ -338,7 +340,10 @@ export class PortfolioService {
 
       // Cost basis rebalancing for tax calculations
       // When adding to position, new cost basis = weighted average
-      if (updates.quantity > asset.quantity && updates.costBasis !== undefined) {
+      if (
+        updates.quantity > asset.quantity &&
+        updates.costBasis !== undefined
+      ) {
         const addedQty = updates.quantity - asset.quantity;
         const oldTotalCost = asset.quantity * (asset.costBasisPerShare || 0);
         const newTotalCost = addedQty * (updates.costBasis / addedQty);
@@ -365,7 +370,8 @@ export class PortfolioService {
     // Recalculate value and unrealized gain/loss for tax tracking
     asset.value = asset.quantity * (asset.currentPrice || 0);
     asset.unrealizedGain =
-      asset.value - (asset.costBasis || asset.quantity * (asset.currentPrice || 0));
+      asset.value -
+      (asset.costBasis || asset.quantity * (asset.currentPrice || 0));
 
     const saved = await this.portfolioAssetRepository.save(asset);
 
@@ -384,10 +390,7 @@ export class PortfolioService {
    *
    * Recalculates portfolio value and allocation after removal.
    */
-  async removeAsset(
-    portfolioId: string,
-    assetId: string,
-  ): Promise<void> {
+  async removeAsset(portfolioId: string, assetId: string): Promise<void> {
     const asset = await this.portfolioAssetRepository.findOne({
       where: { id: assetId, portfolioId },
     });

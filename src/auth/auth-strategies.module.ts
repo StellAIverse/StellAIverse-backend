@@ -29,14 +29,10 @@ import { TraditionalStrategy } from "./strategies/traditional/traditional.strate
 import { OAuthStrategy } from "./strategies/oauth/oauth.strategy";
 import { ApiKeyStrategy } from "./strategies/api-key/api-key.strategy";
 
-import { User } from "../user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
 
 @Module({
-  imports: [
-    ConfigModule,
-    AuthCoreModule,
-    TypeOrmModule.forFeature([User]),
-  ],
+  imports: [ConfigModule, AuthCoreModule, TypeOrmModule.forFeature([User])],
   providers: [
     StrategyRegistry,
     StrategyAuthService,

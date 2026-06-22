@@ -2,7 +2,11 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
 import { TradingTransactionService } from "./trading-transaction.service";
-import { Transaction, TransactionType, TransactionStatus } from "../entities/transaction.entity";
+import {
+  Transaction,
+  TransactionType,
+  TransactionStatus,
+} from "../entities/transaction.entity";
 import { PortfolioAsset } from "../entities/portfolio-asset.entity";
 import { Portfolio } from "../entities/portfolio.entity";
 import {
@@ -120,9 +124,11 @@ describe("TradingTransactionService", () => {
         },
       };
 
-      jest.spyOn(dataSource, "transaction").mockImplementation(async (_, cb) => {
-        return cb(mockManager as any);
-      });
+      jest
+        .spyOn(dataSource, "transaction")
+        .mockImplementation(async (_, cb) => {
+          return cb(mockManager as any);
+        });
 
       const result = await service.executeTrade({
         portfolioId: "portfolio-1",
@@ -176,14 +182,18 @@ describe("TradingTransactionService", () => {
         },
       };
 
-      jest.spyOn(dataSource, "transaction").mockImplementation(async (_, cb) => {
-        return cb(mockManager as any);
-      });
+      jest
+        .spyOn(dataSource, "transaction")
+        .mockImplementation(async (_, cb) => {
+          return cb(mockManager as any);
+        });
 
       await service.executeTrade(operation);
 
       // Try to process the same key again
-      await expect(service.executeTrade(operation)).rejects.toThrow(ConflictException);
+      await expect(service.executeTrade(operation)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it("should throw PortfolioNotFoundException if portfolio not found", async () => {
@@ -201,9 +211,11 @@ describe("TradingTransactionService", () => {
         },
       };
 
-      jest.spyOn(dataSource, "transaction").mockImplementation(async (_, cb) => {
-        return cb(mockManager as any);
-      });
+      jest
+        .spyOn(dataSource, "transaction")
+        .mockImplementation(async (_, cb) => {
+          return cb(mockManager as any);
+        });
 
       await expect(
         service.executeTrade({
@@ -242,9 +254,11 @@ describe("TradingTransactionService", () => {
         },
       };
 
-      jest.spyOn(dataSource, "transaction").mockImplementation(async (_, cb) => {
-        return cb(mockManager as any);
-      });
+      jest
+        .spyOn(dataSource, "transaction")
+        .mockImplementation(async (_, cb) => {
+          return cb(mockManager as any);
+        });
 
       await expect(
         service.executeTrade({
@@ -279,7 +293,9 @@ describe("TradingTransactionService", () => {
     });
 
     it("should throw ConflictException if idempotency key already exists", async () => {
-      jest.spyOn(transactionRepository, "findOne").mockResolvedValue(mockTransaction());
+      jest
+        .spyOn(transactionRepository, "findOne")
+        .mockResolvedValue(mockTransaction());
 
       await expect(
         service.recordTransaction("portfolio-1", "user-1", {

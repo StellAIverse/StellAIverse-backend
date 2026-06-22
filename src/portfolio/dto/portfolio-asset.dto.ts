@@ -1,10 +1,19 @@
-import { IsString, IsOptional, IsNumber, Matches, Length, IsEnum } from "class-validator";
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  Matches,
+  Length,
+  IsEnum,
+} from "class-validator";
 import { Chain } from "../entities/portfolio-asset.entity";
 
 export class PortfolioAssetDto {
   @IsString()
   @Length(3, 10)
-  @Matches(/^[A-Z0-9]+$/, { message: "ticker must be 3-10 alphanumeric characters" })
+  @Matches(/^[A-Z0-9]+$/, {
+    message: "ticker must be 3-10 alphanumeric characters",
+  })
   ticker: string;
 
   @IsString()
@@ -30,7 +39,9 @@ export class PortfolioAssetDto {
 export class AddAssetToPortfolioDto {
   @IsString()
   @Length(3, 10)
-  @Matches(/^[A-Z0-9]+$/, { message: "ticker must be 3-10 alphanumeric characters" })
+  @Matches(/^[A-Z0-9]+$/, {
+    message: "ticker must be 3-10 alphanumeric characters",
+  })
   ticker: string;
 
   @IsString()

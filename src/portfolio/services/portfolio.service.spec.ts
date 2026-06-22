@@ -434,7 +434,8 @@ describe("PortfolioService (CRUD)", () => {
       mockAssetRepo.findOne.mockResolvedValueOnce(null);
       // Second add - simulate existing on ETH but not on POLYGON
       mockAssetRepo.findOne.mockImplementation(async (opts: any) => {
-        if (opts.where?.chain === Chain.ETHEREUM) return { id: "asset-1", ticker: "ETH" };
+        if (opts.where?.chain === Chain.ETHEREUM)
+          return { id: "asset-1", ticker: "ETH" };
         return null;
       });
 
@@ -458,15 +459,7 @@ describe("PortfolioService (CRUD)", () => {
 
     it("should reject invalid ticker symbol (too short)", async () => {
       await expect(
-        service.addAsset(
-          "pf-1",
-          "AB",
-          "Too Short",
-          10,
-          100,
-          0,
-          Chain.ETHEREUM,
-        ),
+        service.addAsset("pf-1", "AB", "Too Short", 10, 100, 0, Chain.ETHEREUM),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -486,15 +479,7 @@ describe("PortfolioService (CRUD)", () => {
 
     it("should reject invalid ticker symbol (lowercase)", async () => {
       await expect(
-        service.addAsset(
-          "pf-1",
-          "btc",
-          "Bitcoin",
-          10,
-          100,
-          0,
-          Chain.ETHEREUM,
-        ),
+        service.addAsset("pf-1", "btc", "Bitcoin", 10, 100, 0, Chain.ETHEREUM),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -514,15 +499,7 @@ describe("PortfolioService (CRUD)", () => {
 
     it("should reject negative quantity", async () => {
       await expect(
-        service.addAsset(
-          "pf-1",
-          "BTC",
-          "Bitcoin",
-          -1,
-          100,
-          0,
-          Chain.ETHEREUM,
-        ),
+        service.addAsset("pf-1", "BTC", "Bitcoin", -1, 100, 0, Chain.ETHEREUM),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -705,9 +682,9 @@ describe("PortfolioService (CRUD)", () => {
     it("should throw error if asset not found", async () => {
       mockAssetRepo.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.removeAsset("pf-1", "non-existent"),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.removeAsset("pf-1", "non-existent")).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 

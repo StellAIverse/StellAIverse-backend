@@ -41,6 +41,8 @@ export const logger = pino({
 // Helper function to create child loggers with context
 export const createLogger = (context: Record<string, any>) => {
   const traceId = getCurrentTraceId();
-  const contextWithTrace = traceId ? { ...context, trace_id: traceId } : context;
+  const contextWithTrace = traceId
+    ? { ...context, trace_id: traceId }
+    : context;
   return logger.child(contextWithTrace);
 };

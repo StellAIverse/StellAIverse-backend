@@ -31,7 +31,7 @@ import { SessionRecoveryService } from "./session-recovery.service";
 import { DelegationService } from "./delegation.service";
 import { EnhancedAuthService } from "./enhanced-auth.service";
 
-import { User } from "../user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
 import { EmailVerification } from "./entities/email-verification.entity";
 import { Wallet } from "./entities/wallet.entity";
 import { RefreshToken, TwoFactorAuth } from "./entities/auth.entity";

@@ -20,7 +20,7 @@ import { JwtStrategy } from "./jwt.strategy";
 import { JwtAuthGuard } from "./jwt.guard";
 import { TokenBlacklistService } from "./token-blacklist.service";
 
-import { User } from "../user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
 
 @Module({
   imports: [
@@ -40,11 +40,6 @@ import { User } from "../user/entities/user.entity";
     // @deprecated Use StrategyAuthService (via AuthStrategiesModule) for new code.
     AuthService,
   ],
-  exports: [
-    TokenBlacklistService,
-    JwtAuthGuard,
-    AuthService,
-    JwtModule,
-  ],
+  exports: [TokenBlacklistService, JwtAuthGuard, AuthService, JwtModule],
 })
 export class AuthCoreModule {}
