@@ -9,7 +9,11 @@ import {
   Min,
   IsObject,
 } from "class-validator";
-import { Transaction, TransactionType, TransactionStatus } from "../entities/transaction.entity";
+import {
+  Transaction,
+  TransactionType,
+  TransactionStatus,
+} from "../entities/transaction.entity";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class CreateTransactionDto {
@@ -82,7 +86,9 @@ export class CreateTransactionDto {
   @IsDateString()
   transactionDate?: string;
 
-  @ApiPropertyOptional({ description: "Idempotency key for preventing duplicates" })
+  @ApiPropertyOptional({
+    description: "Idempotency key for preventing duplicates",
+  })
   @IsOptional()
   @IsString()
   idempotencyKey?: string;
@@ -92,7 +98,9 @@ export class CreateTransactionDto {
   @IsObject()
   metadata?: Record<string, any>;
 
-  @ApiPropertyOptional({ description: "Total transaction value (if not calculated automatically)" })
+  @ApiPropertyOptional({
+    description: "Total transaction value (if not calculated automatically)",
+  })
   @IsOptional()
   @IsNumber()
   totalValue?: number;
@@ -116,7 +124,10 @@ export class UpdateTransactionDto {
 }
 
 export class TransactionFilterDto {
-  @ApiPropertyOptional({ enum: TransactionType, description: "Filter by transaction type" })
+  @ApiPropertyOptional({
+    enum: TransactionType,
+    description: "Filter by transaction type",
+  })
   @IsOptional()
   @IsEnum(TransactionType)
   type?: TransactionType;
@@ -126,7 +137,10 @@ export class TransactionFilterDto {
   @IsString()
   ticker?: string;
 
-  @ApiPropertyOptional({ enum: TransactionStatus, description: "Filter by transaction status" })
+  @ApiPropertyOptional({
+    enum: TransactionStatus,
+    description: "Filter by transaction status",
+  })
   @IsOptional()
   @IsEnum(TransactionStatus)
   status?: TransactionStatus;
@@ -253,7 +267,10 @@ export class TransactionHistoryResponseDto {
   @ApiProperty({ description: "Total pages" })
   totalPages: number;
 
-  @ApiProperty({ type: [TransactionResponseDto], description: "Transactions in current page" })
+  @ApiProperty({
+    type: [TransactionResponseDto],
+    description: "Transactions in current page",
+  })
   transactions: TransactionResponseDto[];
 }
 
@@ -293,7 +310,10 @@ export class TransactionExportDto {
   @ApiPropertyOptional({ description: "End date for export" })
   endDate?: string;
 
-  @ApiPropertyOptional({ enum: TransactionType, description: "Filter by transaction type" })
+  @ApiPropertyOptional({
+    enum: TransactionType,
+    description: "Filter by transaction type",
+  })
   type?: TransactionType;
 
   @ApiPropertyOptional({ description: "Include cost basis calculations" })

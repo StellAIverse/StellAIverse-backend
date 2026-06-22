@@ -2,9 +2,17 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import * as request from "supertest";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { Portfolio, PortfolioStatus, PortfolioType } from "../entities/portfolio.entity";
+import {
+  Portfolio,
+  PortfolioStatus,
+  PortfolioType,
+} from "../entities/portfolio.entity";
 import { PortfolioAsset, AssetType } from "../entities/portfolio-asset.entity";
-import { Transaction, TransactionType, TransactionStatus } from "../entities/transaction.entity";
+import {
+  Transaction,
+  TransactionType,
+  TransactionStatus,
+} from "../entities/transaction.entity";
 import { PortfolioModule } from "../portfolio.module";
 import { User } from "../../user/entities/user.entity";
 
@@ -139,7 +147,9 @@ describe("Portfolio Transactions Integration (e2e)", () => {
   describe("Transaction History and Filtering", () => {
     it("should retrieve transaction history with pagination", async () => {
       const response = await request(app.getHttpServer())
-        .get(`/portfolio/portfolios/${portfolioId}/transactions?page=1&limit=20`)
+        .get(
+          `/portfolio/portfolios/${portfolioId}/transactions?page=1&limit=20`,
+        )
         .set("Authorization", `Bearer ${userId}`);
 
       expect(response.status).toBe(200);
@@ -158,9 +168,11 @@ describe("Portfolio Transactions Integration (e2e)", () => {
         .set("Authorization", `Bearer ${userId}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.transactions.every((t: any) => t.type === TransactionType.BUY)).toBe(
-        true,
-      );
+      expect(
+        response.body.transactions.every(
+          (t: any) => t.type === TransactionType.BUY,
+        ),
+      ).toBe(true);
     });
 
     it("should filter transactions by ticker", async () => {
@@ -169,11 +181,15 @@ describe("Portfolio Transactions Integration (e2e)", () => {
         .set("Authorization", `Bearer ${userId}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.transactions.every((t: any) => t.ticker === "AAPL")).toBe(true);
+      expect(
+        response.body.transactions.every((t: any) => t.ticker === "AAPL"),
+      ).toBe(true);
     });
 
     it("should filter transactions by date range", async () => {
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const startDate = new Date(
+        Date.now() - 30 * 24 * 60 * 60 * 1000,
+      ).toISOString();
       const endDate = new Date().toISOString();
 
       const response = await request(app.getHttpServer())
@@ -195,7 +211,9 @@ describe("Portfolio Transactions Integration (e2e)", () => {
       const transactionId = listResponse.body.transactions[0].id;
 
       const response = await request(app.getHttpServer())
-        .get(`/portfolio/portfolios/${portfolioId}/transactions/${transactionId}`)
+        .get(
+          `/portfolio/portfolios/${portfolioId}/transactions/${transactionId}`,
+        )
         .set("Authorization", `Bearer ${userId}`);
 
       expect(response.status).toBe(200);
@@ -206,7 +224,9 @@ describe("Portfolio Transactions Integration (e2e)", () => {
   describe("Cost Basis Calculation", () => {
     it("should calculate cost basis for a specific ticker", async () => {
       const response = await request(app.getHttpServer())
-        .get(`/portfolio/portfolios/${portfolioId}/transactions/cost-basis/AAPL`)
+        .get(
+          `/portfolio/portfolios/${portfolioId}/transactions/cost-basis/AAPL`,
+        )
         .set("Authorization", `Bearer ${userId}`);
 
       expect(response.status).toBe(200);
@@ -312,7 +332,9 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
       // Should include archived when flag is set
       const withArchived = await request(app.getHttpServer())
-        .get(`/portfolio/portfolios/${portfolioId}/transactions?includeArchived=true`)
+        .get(
+          `/portfolio/portfolios/${portfolioId}/transactions?includeArchived=true`,
+        )
         .set("Authorization", `Bearer ${userId}`);
 
       expect(withArchived.body.total).toBeGreaterThanOrEqual(beforeCount);

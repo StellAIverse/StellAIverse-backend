@@ -1,4 +1,9 @@
-import { Injectable, Logger, ConflictException, BadRequestException } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  ConflictException,
+  BadRequestException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import {
@@ -9,7 +14,11 @@ import { DataSource, EntityManager } from "typeorm";
 import BigNumber from "bignumber.js";
 import { Portfolio } from "../entities/portfolio.entity";
 import { PortfolioAsset } from "../entities/portfolio-asset.entity";
-import { Transaction, TransactionType, TransactionStatus } from "../entities/transaction.entity";
+import {
+  Transaction,
+  TransactionType,
+  TransactionStatus,
+} from "../entities/transaction.entity";
 import { CreateTransactionDto } from "../dto/transaction.dto";
 
 // Configure BigNumber for financial precision (no exponential notation, 18 dp)
@@ -113,7 +122,9 @@ export class TradingTransactionService {
         const saved = await manager.getRepository(PortfolioAsset).save(asset);
 
         // Record transaction
-        const transactionType = bnQuantity.isPositive() ? TransactionType.BUY : TransactionType.SELL;
+        const transactionType = bnQuantity.isPositive()
+          ? TransactionType.BUY
+          : TransactionType.SELL;
         const transaction = manager.getRepository(Transaction).create({
           portfolioId: op.portfolioId,
           userId: op.userId,
@@ -194,7 +205,9 @@ export class TradingTransactionService {
       exchange: dto.exchange,
       notes: dto.notes,
       costBasisPerUnit: dto.costBasisPerUnit || dto.price,
-      transactionDate: dto.transactionDate ? new Date(dto.transactionDate) : new Date(),
+      transactionDate: dto.transactionDate
+        ? new Date(dto.transactionDate)
+        : new Date(),
       idempotencyKey: dto.idempotencyKey,
       metadata: dto.metadata,
     });
@@ -222,7 +235,9 @@ export class TradingTransactionService {
       (dto.type === TransactionType.BUY || dto.type === TransactionType.SELL) &&
       (!dto.price || dto.price <= 0)
     ) {
-      throw new BadRequestException("Price must be positive for buy/sell transactions");
+      throw new BadRequestException(
+        "Price must be positive for buy/sell transactions",
+      );
     }
 
     // Validate fees are non-negative

@@ -28,7 +28,16 @@ export class CreatePortfolioTransactionsTable1704067200000 implements MigrationI
           {
             name: "type",
             type: "enum",
-            enum: ["buy", "sell", "transfer", "dividend", "stake", "unstake", "deposit", "withdrawal"],
+            enum: [
+              "buy",
+              "sell",
+              "transfer",
+              "dividend",
+              "stake",
+              "unstake",
+              "deposit",
+              "withdrawal",
+            ],
             isNullable: false,
           },
           {

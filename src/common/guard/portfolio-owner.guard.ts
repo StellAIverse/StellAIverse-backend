@@ -7,7 +7,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { Portfolio } from "../../portfolio/entities/portfolio.entity";
+import { Portfolio } from "src/portfolio/entities/portfolio.entity";
 
 @Injectable()
 export class PortfolioOwnerGuard implements CanActivate {

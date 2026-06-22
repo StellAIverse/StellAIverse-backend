@@ -303,9 +303,9 @@ describe("RebalancingService", () => {
     it("throws BadRequestException if event not found", async () => {
       mockRebalancingRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.approveRebalancing("missing")).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        service.approveRebalancing("missing"),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 

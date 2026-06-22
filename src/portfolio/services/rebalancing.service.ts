@@ -210,7 +210,8 @@ export class RebalancingService {
     const estimatedCost = this.calculateTransactionCosts(trades);
     const taxImpact = await this.calculateTaxImpact(portfolioId, trades);
 
-    const allocationAfter = portfolio.targetAllocation || portfolio.currentAllocation;
+    const allocationAfter =
+      portfolio.targetAllocation || portfolio.currentAllocation;
 
     if (dryRun) {
       return {

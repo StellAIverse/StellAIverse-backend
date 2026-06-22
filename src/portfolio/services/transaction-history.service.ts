@@ -7,7 +7,11 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, Between, Not, IsNull, SelectQueryBuilder } from "typeorm";
 import BigNumber from "bignumber.js";
-import { Transaction, TransactionType, TransactionStatus } from "../entities/transaction.entity";
+import {
+  Transaction,
+  TransactionType,
+  TransactionStatus,
+} from "../entities/transaction.entity";
 import {
   TransactionFilterDto,
   TransactionResponseDto,
@@ -118,8 +122,14 @@ export class TransactionHistoryService {
     const total = await query.getCount();
 
     // Sort and paginate
-    query.orderBy("transaction.transactionDate", sortBy === "asc" ? "ASC" : "DESC");
-    query.addOrderBy("transaction.createdAt", sortBy === "asc" ? "ASC" : "DESC");
+    query.orderBy(
+      "transaction.transactionDate",
+      sortBy === "asc" ? "ASC" : "DESC",
+    );
+    query.addOrderBy(
+      "transaction.createdAt",
+      sortBy === "asc" ? "ASC" : "DESC",
+    );
 
     const skip = (validPage - 1) * validLimit;
     query.skip(skip).take(validLimit);
@@ -133,7 +143,9 @@ export class TransactionHistoryService {
       page: validPage,
       limit: validLimit,
       totalPages,
-      transactions: transactions.map((t) => TransactionResponseDto.fromEntity(t)),
+      transactions: transactions.map((t) =>
+        TransactionResponseDto.fromEntity(t),
+      ),
     };
   }
 
@@ -203,7 +215,10 @@ export class TransactionHistoryService {
       const txPrice = new BigNumber(tx.price || 0);
       const txFees = new BigNumber(tx.fees || 0);
 
-      if (tx.type === TransactionType.BUY || tx.type === TransactionType.STAKE) {
+      if (
+        tx.type === TransactionType.BUY ||
+        tx.type === TransactionType.STAKE
+      ) {
         // Add to position
         const costPerUnit = txPrice.plus(txFees.dividedBy(txQuantity.abs()));
         const transactionCost = txQuantity.multipliedBy(costPerUnit);
@@ -262,7 +277,9 @@ export class TransactionHistoryService {
       .where("transaction.portfolioId = :portfolioId", { portfolioId })
       .andWhere("transaction.userId = :userId", { userId })
       .andWhere("transaction.archivedAt IS NULL")
-      .andWhere("transaction.status = :status", { status: TransactionStatus.COMPLETED })
+      .andWhere("transaction.status = :status", {
+        status: TransactionStatus.COMPLETED,
+      })
       .getRawMany();
 
     const tickers = tickersResult.map((r: any) => r.ticker);
@@ -397,7 +414,9 @@ export class TransactionHistoryService {
     });
 
     if (!transaction) {
-      throw new NotFoundException(`Transaction ${transactionId} not found or already archived`);
+      throw new NotFoundException(
+        `Transaction ${transactionId} not found or already archived`,
+      );
     }
 
     transaction.archivedAt = new Date();
@@ -462,9 +481,15 @@ export class TransactionHistoryService {
       byStatus[tx.status] = (byStatus[tx.status] || 0) + 1;
 
       const value = new BigNumber(tx.totalValue || 0);
-      if (tx.type === TransactionType.BUY || tx.type === TransactionType.DEPOSIT) {
+      if (
+        tx.type === TransactionType.BUY ||
+        tx.type === TransactionType.DEPOSIT
+      ) {
         totalBuys = totalBuys.plus(value);
-      } else if (tx.type === TransactionType.SELL || tx.type === TransactionType.WITHDRAWAL) {
+      } else if (
+        tx.type === TransactionType.SELL ||
+        tx.type === TransactionType.WITHDRAWAL
+      ) {
         totalSells = totalSells.plus(value);
       }
     }

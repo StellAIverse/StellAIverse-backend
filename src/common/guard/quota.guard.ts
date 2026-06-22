@@ -11,7 +11,7 @@ import {
   RATE_LIMIT_KEY,
   RateLimitOptions,
 } from "../decorators/rate-limit.decorator";
-import { QUOTA_LEVELS, DEFAULT_QUOTA } from "../../config/quota.config";
+import { QUOTA_LEVELS, DEFAULT_QUOTA } from "src/config/quota.config";
 
 @Injectable()
 export class RateLimiterService {

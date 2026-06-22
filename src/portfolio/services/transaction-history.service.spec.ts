@@ -2,17 +2,22 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { TransactionHistoryService } from "./transaction-history.service";
-import { Transaction, TransactionType, TransactionStatus } from "../entities/transaction.entity";
-import { CreateTransactionDto, TransactionFilterDto } from "../dto/transaction.dto";
+import {
+  Transaction,
+  TransactionType,
+  TransactionStatus,
+} from "../entities/transaction.entity";
+import {
+  CreateTransactionDto,
+  TransactionFilterDto,
+} from "../dto/transaction.dto";
 import { NotFoundException, BadRequestException } from "@nestjs/common";
 
 describe("TransactionHistoryService", () => {
   let service: TransactionHistoryService;
   let repository: Repository<Transaction>;
 
-  const mockTransaction = (
-    overrides?: Partial<Transaction>,
-  ): Transaction => {
+  const mockTransaction = (overrides?: Partial<Transaction>): Transaction => {
     const tx = new Transaction();
     tx.id = "tx-1";
     tx.portfolioId = "portfolio-1";
@@ -49,7 +54,9 @@ describe("TransactionHistoryService", () => {
     }).compile();
 
     service = module.get<TransactionHistoryService>(TransactionHistoryService);
-    repository = module.get<Repository<Transaction>>(getRepositoryToken(Transaction));
+    repository = module.get<Repository<Transaction>>(
+      getRepositoryToken(Transaction),
+    );
   });
 
   describe("getTransactionHistory", () => {
@@ -66,7 +73,9 @@ describe("TransactionHistoryService", () => {
         getMany: jest.fn().mockResolvedValue(transactions),
       };
 
-      jest.spyOn(repository, "createQueryBuilder").mockReturnValue(queryBuilder as any);
+      jest
+        .spyOn(repository, "createQueryBuilder")
+        .mockReturnValue(queryBuilder as any);
 
       const result = await service.getTransactionHistory(
         "portfolio-1",
@@ -93,7 +102,9 @@ describe("TransactionHistoryService", () => {
         getMany: jest.fn().mockResolvedValue(transactions),
       };
 
-      jest.spyOn(repository, "createQueryBuilder").mockReturnValue(queryBuilder as any);
+      jest
+        .spyOn(repository, "createQueryBuilder")
+        .mockReturnValue(queryBuilder as any);
 
       const result = await service.getTransactionHistory(
         "portfolio-1",
@@ -117,7 +128,9 @@ describe("TransactionHistoryService", () => {
         getMany: jest.fn().mockResolvedValue(transactions),
       };
 
-      jest.spyOn(repository, "createQueryBuilder").mockReturnValue(queryBuilder as any);
+      jest
+        .spyOn(repository, "createQueryBuilder")
+        .mockReturnValue(queryBuilder as any);
 
       const result = await service.getTransactionHistory(
         "portfolio-1",
@@ -141,7 +154,9 @@ describe("TransactionHistoryService", () => {
         getMany: jest.fn().mockResolvedValue(transactions),
       };
 
-      jest.spyOn(repository, "createQueryBuilder").mockReturnValue(queryBuilder as any);
+      jest
+        .spyOn(repository, "createQueryBuilder")
+        .mockReturnValue(queryBuilder as any);
 
       const result = await service.getTransactionHistory(
         "portfolio-1",
@@ -167,7 +182,9 @@ describe("TransactionHistoryService", () => {
         getMany: jest.fn().mockResolvedValue([]),
       };
 
-      jest.spyOn(repository, "createQueryBuilder").mockReturnValue(queryBuilder as any);
+      jest
+        .spyOn(repository, "createQueryBuilder")
+        .mockReturnValue(queryBuilder as any);
 
       await expect(
         service.getTransactionHistory("portfolio-1", "user-1", {
@@ -183,7 +200,11 @@ describe("TransactionHistoryService", () => {
       const tx = mockTransaction();
       jest.spyOn(repository, "findOne").mockResolvedValue(tx);
 
-      const result = await service.getTransaction("tx-1", "portfolio-1", "user-1");
+      const result = await service.getTransaction(
+        "tx-1",
+        "portfolio-1",
+        "user-1",
+      );
 
       expect(result.id).toBe("tx-1");
       expect(repository.findOne).toHaveBeenCalledWith({
@@ -229,7 +250,9 @@ describe("TransactionHistoryService", () => {
         getMany: jest.fn().mockResolvedValue([tx1, tx2]),
       };
 
-      jest.spyOn(repository, "createQueryBuilder").mockReturnValue(queryBuilder as any);
+      jest
+        .spyOn(repository, "createQueryBuilder")
+        .mockReturnValue(queryBuilder as any);
 
       const result = await service.calculateCostBasis(
         "portfolio-1",
@@ -250,7 +273,9 @@ describe("TransactionHistoryService", () => {
         getMany: jest.fn().mockResolvedValue([]),
       };
 
-      jest.spyOn(repository, "createQueryBuilder").mockReturnValue(queryBuilder as any);
+      jest
+        .spyOn(repository, "createQueryBuilder")
+        .mockReturnValue(queryBuilder as any);
 
       await expect(
         service.calculateCostBasis("portfolio-1", "user-1", "AAPL"),
@@ -272,7 +297,9 @@ describe("TransactionHistoryService", () => {
         getMany: jest.fn().mockResolvedValue(transactions),
       };
 
-      jest.spyOn(repository, "createQueryBuilder").mockReturnValue(queryBuilder as any);
+      jest
+        .spyOn(repository, "createQueryBuilder")
+        .mockReturnValue(queryBuilder as any);
 
       const csv = await service.exportTransactionsAsCSV(
         "portfolio-1",
@@ -297,7 +324,9 @@ describe("TransactionHistoryService", () => {
         getMany: jest.fn().mockResolvedValue([]),
       };
 
-      jest.spyOn(repository, "createQueryBuilder").mockReturnValue(queryBuilder as any);
+      jest
+        .spyOn(repository, "createQueryBuilder")
+        .mockReturnValue(queryBuilder as any);
 
       const result = await service.exportTransactionsAsCSV(
         "portfolio-1",
@@ -323,7 +352,9 @@ describe("TransactionHistoryService", () => {
         getMany: jest.fn().mockResolvedValue(transactions),
       };
 
-      jest.spyOn(repository, "createQueryBuilder").mockReturnValue(queryBuilder as any);
+      jest
+        .spyOn(repository, "createQueryBuilder")
+        .mockReturnValue(queryBuilder as any);
 
       const result = await service.exportTransactionsAsJSON(
         "portfolio-1",
