@@ -91,6 +91,11 @@ export class CreateTransactionDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>;
+
+  @ApiPropertyOptional({ description: "Total transaction value (if not calculated automatically)" })
+  @IsOptional()
+  @IsNumber()
+  totalValue?: number;
 }
 
 export class UpdateTransactionDto {

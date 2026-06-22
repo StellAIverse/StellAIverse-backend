@@ -10,7 +10,7 @@ import { Portfolio } from "../entities/portfolio.entity";
 import { PortfolioAsset } from "../entities/portfolio-asset.entity";
 import { PortfolioService } from "./portfolio.service";
 
-interface RebalancingResult {
+export interface RebalancingResult {
   event?: RebalancingEvent;
   allocationBefore: Record<string, number>;
   allocationAfter: Record<string, number>;

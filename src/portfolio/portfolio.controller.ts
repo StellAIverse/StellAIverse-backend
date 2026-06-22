@@ -19,7 +19,7 @@ import { Throttle } from "@nestjs/throttler";
 import { Response as ExpressResponse } from "express";
 import { JwtAuthGuard } from "src/auth/jwt.guard";
 import { PortfolioService } from "./services/portfolio.service";
-import { RebalancingService } from "./services/rebalancing.service";
+import { RebalancingService, RebalancingResult } from "./services/rebalancing.service";
 import { PerformanceAnalyticsService } from "./services/performance-analytics.service";
 import { BacktestingService } from "./services/backtesting.service";
 import { MLPredictionService } from "./services/ml-prediction.service";
