@@ -1,20 +1,21 @@
-import client from "prom-client";
+import * as client from "prom-client";
 
-// Create a Registry to register the metrics
-export const register = new client.Registry();
+// Use the global default registry singleton exported by prom-client
+export const { register } = client;
 
-// Add default metrics (CPU, memory, etc.)
+// Default metrics (CPU, memory, event loop, GC, etc.)
 client.collectDefaultMetrics({
   register,
   prefix: "stellaiverse_",
 });
 
-// Custom metrics
+// ── HTTP metrics ──────────────────────────────────────────────────────────────
+
 export const httpRequestDuration = new client.Histogram({
   name: "stellaiverse_http_request_duration_seconds",
   help: "Duration of HTTP requests in seconds",
   labelNames: ["method", "route", "status_code"],
-  buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
+  buckets: [0.05, 0.1, 0.5, 1, 3, 5, 10],
   registers: [register],
 });
 
@@ -32,11 +33,20 @@ export const httpRequestsInProgress = new client.Gauge({
   registers: [register],
 });
 
+export const httpErrorTotal = new client.Counter({
+  name: "stellaiverse_http_errors_total",
+  help: "Total number of HTTP error responses",
+  labelNames: ["method", "route", "status_code"],
+  registers: [register],
+});
+
+// ── Database metrics ──────────────────────────────────────────────────────────
+
 export const databaseQueryDuration = new client.Histogram({
   name: "stellaiverse_database_query_duration_seconds",
   help: "Duration of database queries in seconds",
   labelNames: ["operation", "table"],
-  buckets: [0.01, 0.05, 0.1, 0.3, 0.5, 1, 2, 5],
+  buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2],
   registers: [register],
 });
 
@@ -47,17 +57,35 @@ export const activeConnections = new client.Gauge({
   registers: [register],
 });
 
-export const errorTotal = new client.Counter({
-  name: "stellaiverse_errors_total",
-  help: "Total number of errors",
-  labelNames: ["type", "severity"],
+// ── Auth metrics ──────────────────────────────────────────────────────────────
+
+export const authAttemptsTotal = new client.Counter({
+  name: "stellaiverse_auth_attempts_total",
+  help: "Total number of authentication attempts",
+  labelNames: ["method"],
   registers: [register],
 });
 
-// Business metrics examples
+export const authSuccessTotal = new client.Counter({
+  name: "stellaiverse_auth_success_total",
+  help: "Total number of successful authentications",
+  labelNames: ["method"],
+  registers: [register],
+});
+
+export const authFailureTotal = new client.Counter({
+  name: "stellaiverse_auth_failures_total",
+  help: "Total number of failed authentication attempts",
+  labelNames: ["method", "reason"],
+  registers: [register],
+});
+
+// ── Business metrics ──────────────────────────────────────────────────────────
+
 export const userSignups = new client.Counter({
   name: "stellaiverse_user_signups_total",
   help: "Total number of user signups",
+  labelNames: ["method"],
   registers: [register],
 });
 
@@ -67,12 +95,13 @@ export const activeUsers = new client.Gauge({
   registers: [register],
 });
 
-// Compute job queue metrics
+// ── Job queue metrics ─────────────────────────────────────────────────────────
+
 export const jobDuration = new client.Histogram({
   name: "stellaiverse_job_duration_seconds",
   help: "Duration of compute job processing in seconds",
   labelNames: ["job_type", "status"],
-  buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300],
+  buckets: [0.1, 0.5, 1, 5, 10, 30, 60, 300],
   registers: [register],
 });
 
@@ -94,5 +123,12 @@ export const queueLength = new client.Gauge({
   name: "stellaiverse_queue_length",
   help: "Number of jobs in various queue states",
   labelNames: ["queue_name", "state"],
+  registers: [register],
+});
+
+export const errorTotal = new client.Counter({
+  name: "stellaiverse_errors_total",
+  help: "Total number of application errors",
+  labelNames: ["type", "severity"],
   registers: [register],
 });
