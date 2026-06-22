@@ -62,14 +62,17 @@ export class PortfolioService {
     userId: string,
     dto: CreatePortfolioDto,
   ): Promise<Portfolio> {
-    this.logger.log(`Creating portfolio "${dto.name}" for user ${userId}`);
+    const trimmedName = dto.name.trim();
+    this.logger.log(`Creating portfolio "${trimmedName}" for user ${userId}`);
 
-    await this.assertNameIsUnique(dto.name);
+    await this.assertNameIsUnique(trimmedName);
 
     const initialAllocation = dto.initialAllocation || {};
+    this.validateAllocation(initialAllocation);
 
     const portfolio = this.portfolioRepository.create({
       ...dto,
+      name: trimmedName,
       userId,
       status: PortfolioStatus.ACTIVE,
       type: dto.type || PortfolioType.BALANCED,
@@ -123,8 +126,8 @@ export class PortfolioService {
     const page = query.page && query.page > 0 ? query.page : 1;
     const limit = query.limit && query.limit > 0 ? query.limit : 20;
 
-    const where: Record<string, unknown> = { userId };
-    if (query.status) where.status = query.status;
+    const where: Record<string, unknown> = { userId, status: Not(PortfolioStatus.ARCHIVED) };
+    if (query.status && query.status !== PortfolioStatus.ARCHIVED) where.status = query.status;
     if (query.type) where.type = query.type;
     if (query.search) where.name = ILike(`%${query.search}%`);
 
@@ -157,11 +160,11 @@ export class PortfolioService {
   ): Promise<Portfolio> {
     const portfolio = await this.getPortfolio(portfolioId);
 
-    if (dto.name && dto.name !== portfolio.name) {
-      await this.assertNameIsUnique(dto.name, portfolioId);
+    if (dto.name && dto.name.trim() !== portfolio.name) {
+      await this.assertNameIsUnique(dto.name.trim(), portfolioId);
     }
 
-    Object.assign(portfolio, dto);
+    Object.assign(portfolio, dto, { name: dto.name?.trim() });
 
     const saved = await this.portfolioRepository.save(portfolio);
     this.logger.log(`Portfolio ${portfolioId} updated`);
@@ -177,6 +180,7 @@ export class PortfolioService {
     const portfolio = await this.getPortfolio(portfolioId);
     portfolio.status = PortfolioStatus.ARCHIVED;
     const saved = await this.portfolioRepository.save(portfolio);
+    await this.portfolioRepository.softDelete(portfolioId);
     this.logger.log(`Portfolio ${portfolioId} archived`);
     return saved;
   }
@@ -200,6 +204,21 @@ export class PortfolioService {
       throw new BadRequestException(
         `Unsupported chain "${chain}": must be one of ${SUPPORTED_CHAINS.join(", ")}`,
       );
+    }
+  }
+
+  /**
+   * Validate allocation object contains non-negative numeric values.
+   */
+  private validateAllocation(
+    allocation: Record<string, number>,
+  ): void {
+    for (const [key, value] of Object.entries(allocation)) {
+      if (typeof value !== "number" || value < 0) {
+        throw new BadRequestException(
+          `Invalid allocation for "${key}": value must be a non-negative number`,
+        );
+      }
     }
   }
 
