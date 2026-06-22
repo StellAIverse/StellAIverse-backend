@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ethers } from "ethers";
 import {
   ProtocolAdapter,
@@ -38,26 +39,26 @@ export class AaveAdapter implements ProtocolAdapter {
   private rewardsControllerAddress =
     "0xd784927Ff2f95ba7a3F00302f7F038858F1b3c6e";
 
-  constructor() {
+  constructor(private readonly configService: ConfigService) {
     this.initializeProviders();
   }
 
   private initializeProviders() {
     this.providers.set(
       "ethereum",
-      new ethers.JsonRpcProvider(process.env.ETH_RPC_URL || ""),
+      new ethers.JsonRpcProvider(this.configService.get<string>("ETH_RPC_URL") || ""),
     );
     this.providers.set(
       "arbitrum",
-      new ethers.JsonRpcProvider(process.env.ARB_RPC_URL || ""),
+      new ethers.JsonRpcProvider(this.configService.get<string>("ARB_RPC_URL") || ""),
     );
     this.providers.set(
       "polygon",
-      new ethers.JsonRpcProvider(process.env.POLY_RPC_URL || ""),
+      new ethers.JsonRpcProvider(this.configService.get<string>("POLY_RPC_URL") || ""),
     );
     this.providers.set(
       "optimism",
-      new ethers.JsonRpcProvider(process.env.OPT_RPC_URL || ""),
+      new ethers.JsonRpcProvider(this.configService.get<string>("OPT_RPC_URL") || ""),
     );
   }
 

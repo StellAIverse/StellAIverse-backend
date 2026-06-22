@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import * as nodemailer from "nodemailer";
 import { Transporter } from "nodemailer";
 
@@ -7,22 +8,25 @@ export class EmailService {
   private transporter: Transporter;
   private readonly logger = new Logger(EmailService.name);
 
-  constructor() {
+  constructor(private readonly configService: ConfigService) {
     this.initializeTransporter();
   }
 
   private async initializeTransporter() {
     // For development: use Ethereal (fake SMTP)
     // For production: use real SMTP credentials from environment
-    if (process.env.SMTP_USER && process.env.SMTP_PASSWORD) {
+    const smtpUser = this.configService.get<string>("SMTP_USER");
+    const smtpPassword = this.configService.get<string>("SMTP_PASSWORD");
+    
+    if (smtpUser && smtpPassword) {
       // Use configured SMTP
       this.transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || "smtp.ethereal.email",
-        port: parseInt(process.env.SMTP_PORT || "587"),
-        secure: process.env.SMTP_SECURE === "true",
+        host: this.configService.get<string>("SMTP_HOST"),
+        port: this.configService.get<number>("SMTP_PORT"),
+        secure: this.configService.get<boolean>("SMTP_SECURE"),
         auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASSWORD,
+          user: smtpUser,
+          pass: smtpPassword,
         },
       });
       this.logger.log("Email service initialized with configured SMTP");
@@ -48,11 +52,10 @@ export class EmailService {
     email: string,
     token: string,
   ): Promise<{ messageId: string; previewUrl?: string }> {
-    const verificationUrl = `${process.env.EMAIL_VERIFICATION_URL || "http://localhost:3000/auth/verify-email"}?token=${token}`;
+    const verificationUrl = `${this.configService.get<string>("EMAIL_VERIFICATION_URL")}?token=${token}`;
 
     const info = await this.transporter.sendMail({
-      from:
-        process.env.EMAIL_FROM || '"StellAIverse" <noreply@stellaiverse.com>',
+      from: this.configService.get<string>("EMAIL_FROM"),
       to: email,
       subject: "Verify your email address - StellAIverse",
       html: `
@@ -124,8 +127,7 @@ export class EmailService {
     walletAddress: string,
   ): Promise<{ messageId: string; previewUrl?: string }> {
     const info = await this.transporter.sendMail({
-      from:
-        process.env.EMAIL_FROM || '"StellAIverse" <noreply@stellaiverse.com>',
+      from: this.configService.get<string>("EMAIL_FROM"),
       to: email,
       subject: "Account Recovery Information - StellAIverse",
       html: `
@@ -222,10 +224,7 @@ export class EmailService {
     from?: string;
   }): Promise<{ messageId: string; previewUrl?: string }> {
     const info = await this.transporter.sendMail({
-      from:
-        options.from ||
-        process.env.EMAIL_FROM ||
-        '"StellAIverse" <noreply@stellaiverse.com>',
+      from: options.from || this.configService.get<string>("EMAIL_FROM"),
       to: options.to,
       subject: options.subject,
       html: options.html,

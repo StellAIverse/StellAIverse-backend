@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { validateEnv } from "./config/env.validation";
 import { APP_GUARD, APP_FILTER } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { TerminusModule } from "@nestjs/terminus";
@@ -60,6 +61,7 @@ import { SubmissionVerifierService } from "./oracle/submission-verifier.service"
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ".env",
+      validate: validateEnv,
     }),
 
     SentryModule.forRoot(),

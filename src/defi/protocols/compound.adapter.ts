@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ethers } from "ethers";
 import {
   ProtocolAdapter,
@@ -38,22 +39,22 @@ export class CompoundAdapter implements ProtocolAdapter {
   private comptrollerAddress = "0x3d9819210A31b4961b30EF54fE2F5454d242d86d"; // Ethereum mainnet
   private compAddress = "0xc0Ba369c8Db6eB3924965e5c4FDc07c311f25424";
 
-  constructor() {
+  constructor(private readonly configService: ConfigService) {
     this.initializeProviders();
   }
 
   private initializeProviders() {
     this.providers.set(
       "ethereum",
-      new ethers.JsonRpcProvider(process.env.ETH_RPC_URL || ""),
+      new ethers.JsonRpcProvider(this.configService.get<string>("ETH_RPC_URL") || ""),
     );
     this.providers.set(
       "arbitrum",
-      new ethers.JsonRpcProvider(process.env.ARB_RPC_URL || ""),
+      new ethers.JsonRpcProvider(this.configService.get<string>("ARB_RPC_URL") || ""),
     );
     this.providers.set(
       "polygon",
-      new ethers.JsonRpcProvider(process.env.POLY_RPC_URL || ""),
+      new ethers.JsonRpcProvider(this.configService.get<string>("POLY_RPC_URL") || ""),
     );
   }
 
