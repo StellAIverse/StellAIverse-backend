@@ -21,6 +21,7 @@ import { PortfolioModule } from "./portfolio/portfolio.module";
 import { RiskManagementModule } from "./risk-management/risk-management.module";
 import { DeFiModule } from "./defi/defi.module";
 import { AlertsModule } from "./alerts/alerts.module";
+import { MetricsModule } from "./metrics/metrics.module";
 
 // Auth entities
 import { User } from "./user/entities/user.entity";
@@ -135,6 +136,7 @@ import { SubmissionVerifierService } from "./oracle/submission-verifier.service"
     RiskManagementModule,
     DeFiModule,
     AlertsModule,
+    MetricsModule,
   ],
 
   controllers: [AppController],
