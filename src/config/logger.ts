@@ -1,7 +1,16 @@
 const pino = require("pino");
-import { getCurrentTraceId } from "./tracing";
 
 const isDevelopment = process.env.NODE_ENV === "development";
+
+// Lazy getter to avoid circular dependency with tracing.ts
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getTraceId = (): string | undefined => {
+  try {
+    return require("./tracing").getCurrentTraceId();
+  } catch {
+    return undefined;
+  }
+};
 
 // Create a Pino logger that automatically includes trace IDs
 export const logger = pino({
@@ -28,7 +37,7 @@ export const logger = pino({
   timestamp: pino.stdTimeFunctions.isoTime,
   // Mixin to add trace ID to every log entry
   mixin() {
-    const traceId = getCurrentTraceId();
+    const traceId = getTraceId();
     if (traceId) {
       return {
         trace_id: traceId,
@@ -40,7 +49,7 @@ export const logger = pino({
 
 // Helper function to create child loggers with context
 export const createLogger = (context: Record<string, any>) => {
-  const traceId = getCurrentTraceId();
+  const traceId = getTraceId();
   const contextWithTrace = traceId
     ? { ...context, trace_id: traceId }
     : context;

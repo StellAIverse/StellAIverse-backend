@@ -17,6 +17,10 @@ import {
 } from "@opentelemetry/api";
 import { W3CTraceContextPropagator } from "@opentelemetry/core";
 
+// Lazy logger reference to avoid circular dependency with logger.ts
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getLogger = (): any => require("./logger").logger;
+
 // Rate-limited sampling configuration
 // Uses TraceIdRatioBasedSampler with configurable sampling rate
 // For production, consider implementing custom adaptive sampling based on your needs
@@ -27,7 +31,7 @@ const createConfiguredSampler = () => {
   );
   const finalRate = Math.max(Math.min(samplingRate, 1.0), minSamplingRate);
 
-  console.log(`Configured sampling rate: ${finalRate * 100}%`);
+  getLogger().debug({ samplingRate: finalRate }, `Configured sampling rate: ${finalRate * 100}%`);
   return new TraceIdRatioBasedSampler(finalRate);
 };
 
@@ -40,7 +44,7 @@ const createSpanProcessor = (): SpanProcessor => {
         process.env.OTEL_EXPORTER_JAEGER_ENDPOINT ||
         "http://localhost:14268/api/traces",
     });
-    console.log("Jaeger exporter configured");
+    getLogger().info("Jaeger exporter configured");
     return new BatchSpanProcessor(jaegerExporter);
   }
 
@@ -51,7 +55,7 @@ const createSpanProcessor = (): SpanProcessor => {
         process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
         "http://localhost:4318/v1/traces",
     });
-    console.log("OTLP exporter configured");
+    getLogger().info("OTLP exporter configured");
     return new BatchSpanProcessor(otlpExporter);
   }
 
@@ -90,15 +94,16 @@ export const sdk = new NodeSDK({
 export const startTracing = async () => {
   try {
     sdk.start();
-    console.log("OpenTelemetry tracing initialized with configurable sampling");
-    console.log(
-      "Jaeger endpoint:",
-      process.env.OTEL_EXPORTER_JAEGER_ENDPOINT ||
-        "http://localhost:14268/api/traces",
+    getLogger().info(
+      {
+        jaegerEndpoint:
+          process.env.OTEL_EXPORTER_JAEGER_ENDPOINT ||
+          "http://localhost:14268/api/traces",
+      },
+      "OpenTelemetry tracing initialized with configurable sampling",
     );
-    console.log("Jaeger UI available at:", "http://localhost:16686");
   } catch (err) {
-    console.error("Failed to start OpenTelemetry SDK:", err);
+    getLogger().error({ err }, "Failed to start OpenTelemetry SDK");
   }
 };
 
@@ -106,9 +111,9 @@ export const startTracing = async () => {
 export const shutdownTracing = async () => {
   try {
     await sdk.shutdown();
-    console.log("OpenTelemetry tracing shut down");
+    getLogger().info("OpenTelemetry tracing shut down");
   } catch (error) {
-    console.error("Error shutting down tracing:", error);
+    getLogger().error({ error }, "Error shutting down tracing");
   }
 };
 

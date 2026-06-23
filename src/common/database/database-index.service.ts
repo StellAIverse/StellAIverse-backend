@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource } from "typeorm";
+import { logger } from "../../config/logger";
 
 export interface IndexAnalysis {
   tableName: string;
@@ -114,11 +115,11 @@ export class DatabaseIndexService {
           await this.dataSource.query(
             `CREATE INDEX CONCURRENTLY IF NOT EXISTS ${recommendation.indexName} ON ${recommendation.tableName} (${recommendation.columns.join(", ")});`,
           );
-          console.log(`Created index: ${recommendation.indexName}`);
+          logger.info({ indexName: recommendation.indexName }, `Created index: ${recommendation.indexName}`);
         } catch (error) {
-          console.error(
-            `Failed to create index ${recommendation.indexName}:`,
-            error,
+          logger.error(
+            { indexName: recommendation.indexName, error },
+            `Failed to create index ${recommendation.indexName}`,
           );
         }
       }
@@ -277,7 +278,7 @@ export class DatabaseIndexService {
         "CREATE EXTENSION IF NOT EXISTS pg_stat_statements;",
       );
     } catch (error) {
-      console.warn("Could not enable pg_stat_statements extension:", error);
+      logger.warn({ error }, "Could not enable pg_stat_statements extension");
     }
   }
 }
