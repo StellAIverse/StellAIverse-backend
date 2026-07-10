@@ -1,4 +1,4 @@
-# stellAIverse-backend
+# AIverse-backend
 
 A robust NestJS-based off-chain services suite and API layer that powers the stellAIverse: secure, auditable, real-time backend services that complement on‑chain logic. Implemented with NestJS (Node.js + TypeScript) with optional Rust adapters for performance‑critical components.
 
@@ -54,7 +54,7 @@ Technical highlights
 Quick start (developer)
 -----------------------
 1. Clone the repo
-   git clone https://github.com/StellAIverse/stellAIverse-backend.git
+   git clone https://github.com/redux-space/AIverse-backend.git
 
 2. Install dependencies
    npm install
