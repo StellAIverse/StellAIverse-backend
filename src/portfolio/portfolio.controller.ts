@@ -16,6 +16,7 @@ import {
 } from "@nestjs/common";
 import { ApiTags, ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
+import { RateLimit } from "../common/decorators/rate-limit.decorator";
 import { Response as ExpressResponse } from "express";
 import { JwtAuthGuard } from "src/auth/jwt.guard";
 import { PortfolioService } from "./services/portfolio.service";
@@ -66,6 +67,7 @@ import {
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Throttle({ trading: { ttl: 60_000, limit: 20 } })
+@RateLimit({ level: "standard", limit: 20, windowMs: 60_000, burst: 5 })
 export class PortfolioController {
   constructor(
     private portfolioService: PortfolioService,

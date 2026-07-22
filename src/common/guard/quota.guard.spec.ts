@@ -1,7 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { Reflector } from "@nestjs/core";
-import { QuotaGuard, RateLimiterService } from "./quota.guard";
+import { QuotaGuard } from "./quota.guard";
 import { HttpException } from "@nestjs/common";
+import { RateLimiterService } from "src/quota/rate-limiter.service";
 
 describe("QuotaGuard", () => {
   let guard: QuotaGuard;
@@ -56,6 +57,7 @@ describe("QuotaGuard", () => {
     });
     (rateLimiterService.checkQuota as jest.Mock).mockResolvedValue({
       allowed: false,
+      limit: 10,
       remaining: 0,
       resetMs: 60000,
     });
@@ -77,6 +79,7 @@ describe("QuotaGuard", () => {
       "X-RateLimit-Limit",
       expect.any(Number),
     );
+    expect(mockResponse.header).toHaveBeenCalledWith("Retry-After", 60);
   });
 
   it("should allow request and set headers if within limit", async () => {
@@ -85,6 +88,7 @@ describe("QuotaGuard", () => {
     });
     (rateLimiterService.checkQuota as jest.Mock).mockResolvedValue({
       allowed: true,
+      limit: 10,
       remaining: 5,
       resetMs: 60000,
     });
@@ -106,6 +110,45 @@ describe("QuotaGuard", () => {
     expect(mockResponse.header).toHaveBeenCalledWith(
       "X-RateLimit-Remaining",
       5,
+    );
+  });
+
+  it("hashes API keys before using them as Redis identifiers", async () => {
+    (reflector.getAllAndOverride as jest.Mock).mockReturnValue({
+      limit: 10,
+      windowMs: 60_000,
+    });
+    (rateLimiterService.checkQuota as jest.Mock).mockResolvedValue({
+      allowed: true,
+      limit: 10,
+      remaining: 9,
+      resetMs: 6_000,
+    });
+    const context = {
+      getHandler: jest.fn(),
+      getClass: jest.fn(),
+      switchToHttp: jest.fn().mockReturnValue({
+        getRequest: jest.fn().mockReturnValue({
+          headers: { "x-api-key": "secret-api-key" },
+        }),
+        getResponse: jest.fn().mockReturnValue({ header: jest.fn() }),
+      }),
+    } as any;
+
+    await guard.canActivate(context);
+
+    expect(rateLimiterService.checkQuota).toHaveBeenCalledWith(
+      expect.stringMatching(/^api-key:[a-f0-9]{64}$/),
+      10,
+      60_000,
+      expect.any(Number),
+      "token-bucket",
+    );
+    expect(rateLimiterService.checkQuota).not.toHaveBeenCalledWith(
+      expect.stringContaining("secret-api-key"),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
     );
   });
 });
