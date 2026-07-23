@@ -7,53 +7,17 @@ import {
   Optional,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
+import { createHash } from "node:crypto";
 import {
   RATE_LIMIT_KEY,
   RateLimitOptions,
 } from "../decorators/rate-limit.decorator";
-import { QUOTA_LEVELS, DEFAULT_QUOTA } from "src/config/quota.config";
-
-@Injectable()
-export class RateLimiterService {
-  private memory = new Map<string, { tokens: number; lastRefill: number }>();
-
-  async checkQuota(
-    key: string,
-    limit: number,
-    windowMs: number,
-    burst: number = 0,
-  ): Promise<{ allowed: boolean; remaining: number; resetMs: number }> {
-    const now = Date.now();
-    const rate = limit / windowMs;
-    const capacity = limit + burst;
-
-    let record = this.memory.get(key);
-    if (!record) {
-      record = { tokens: capacity, lastRefill: now };
-    } else {
-      const elapsed = now - record.lastRefill;
-      const refill = elapsed * rate;
-      record.tokens = Math.min(capacity, record.tokens + refill);
-      record.lastRefill = now;
-    }
-
-    if (record.tokens >= 1) {
-      record.tokens -= 1;
-      this.memory.set(key, record);
-      return {
-        allowed: true,
-        remaining: Math.floor(record.tokens),
-        resetMs: Math.max(0, Math.ceil((capacity - record.tokens) / rate)),
-      };
-    } else {
-      return {
-        allowed: false,
-        remaining: 0,
-        resetMs: Math.max(0, Math.ceil((1 - record.tokens) / rate)),
-      };
-    }
-  }
-}
+import { DEFAULT_QUOTA, QUOTA_LEVELS } from "src/config/quota.config";
+import { RateLimiterService } from "src/quota/rate-limiter.service";
+import {
+  rateLimitDecisionsTotal,
+  rateLimitRejectionsTotal,
+} from "src/config/metrics";
 
 @Injectable()
 export class QuotaGuard implements CanActivate {
@@ -61,21 +25,19 @@ export class QuotaGuard implements CanActivate {
   private dynamicScaling?: any;
   private analytics?: any;
   private premiumBonus?: any;
-  private rateLimiterService: RateLimiterService;
 
   constructor(
     private readonly reflector: Reflector,
+    private readonly rateLimiterService: RateLimiterService,
     @Optional() metrics?: any,
     @Optional() dynamicScaling?: any,
     @Optional() analytics?: any,
     @Optional() premiumBonus?: any,
-    @Optional() rateLimiterService?: RateLimiterService,
   ) {
     this.metrics = metrics;
     this.dynamicScaling = dynamicScaling;
     this.analytics = analytics;
     this.premiumBonus = premiumBonus;
-    this.rateLimiterService = rateLimiterService || new RateLimiterService();
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -188,9 +150,17 @@ export class QuotaGuard implements CanActivate {
       limit,
       windowMs,
       burst,
+      options.algorithm ?? "token-bucket",
     );
 
     const decisionMs = Date.now() - startedAt;
+    rateLimitDecisionsTotal.inc({
+      policy,
+      outcome: result.allowed
+        ? (result.reason ?? "allowed")
+        : (result.reason ?? "limited"),
+      identifier_type: trackerKey.split(":", 1)[0],
+    });
 
     this.metrics?.rateLimitHits.inc({ policy, user_tier: userTier, endpoint });
     this.metrics?.rateLimitCurrentUsage.set(
@@ -211,6 +181,10 @@ export class QuotaGuard implements CanActivate {
     );
 
     if (!result.allowed) {
+      rateLimitRejectionsTotal.inc({
+        policy,
+        reason: result.reason ?? "limited",
+      });
       this.metrics?.rateLimitExceeded.inc({
         policy,
         user_tier: userTier,
@@ -294,19 +268,24 @@ export class QuotaGuard implements CanActivate {
     const response = context.switchToHttp().getResponse();
 
     // Set headers
-    response.header("X-RateLimit-Limit", limit);
+    response.header("X-RateLimit-Limit", result.limit);
     response.header("X-RateLimit-Remaining", result.remaining);
     response.header(
       "X-RateLimit-Reset",
-      new Date(Date.now() + result.resetMs).toISOString(),
+      Math.ceil((Date.now() + result.resetMs) / 1000),
     );
 
     if (!result.allowed) {
+      response.header(
+        "Retry-After",
+        Math.max(1, Math.ceil(result.resetMs / 1000)),
+      );
       throw new HttpException(
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
           message: "Rate limit exceeded",
           retryAfterMs: result.resetMs,
+          reason: result.reason,
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );
@@ -319,6 +298,12 @@ export class QuotaGuard implements CanActivate {
     const userId = req.user?.id;
     if (userId) {
       return `user:${userId}`;
+    }
+
+    const apiKey = req.headers?.["x-api-key"];
+    if (typeof apiKey === "string" && apiKey.length > 0) {
+      const digest = createHash("sha256").update(apiKey).digest("hex");
+      return `api-key:${digest}`;
     }
 
     const xff = req.headers?.["x-forwarded-for"];
