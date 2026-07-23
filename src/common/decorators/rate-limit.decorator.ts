@@ -18,6 +18,7 @@ export interface RateLimitOptions {
   limit?: number;
   windowMs?: number;
   burst?: number;
+  algorithm?: "token-bucket" | "leaky-bucket";
 }
 
 const TIER_CONFIG: Record<SensitiveTier, { limit: number; ttl: number }> = {
@@ -29,7 +30,15 @@ const TIER_CONFIG: Record<SensitiveTier, { limit: number; ttl: number }> = {
 
 export function SensitiveRateLimit(tier: SensitiveTier = "default") {
   const { limit, ttl } = TIER_CONFIG[tier];
-  return applyDecorators(Throttle({ default: { limit, ttl } }));
+  return applyDecorators(
+    Throttle({ default: { limit, ttl } }),
+    SetMetadata(RATE_LIMIT_KEY, {
+      level: tier,
+      limit,
+      windowMs: ttl,
+      burst: 0,
+    } satisfies RateLimitOptions),
+  );
 }
 
 /**

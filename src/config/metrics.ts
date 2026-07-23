@@ -132,3 +132,19 @@ export const errorTotal = new client.Counter({
   labelNames: ["type", "severity"],
   registers: [register],
 });
+
+// ── Distributed rate-limit metrics ──────────────────────────────────────────
+
+export const rateLimitDecisionsTotal = new client.Counter({
+  name: "stellaiverse_rate_limit_decisions_total",
+  help: "Total distributed rate-limit decisions",
+  labelNames: ["policy", "outcome", "identifier_type"],
+  registers: [register],
+});
+
+export const rateLimitRejectionsTotal = new client.Counter({
+  name: "stellaiverse_rate_limit_rejections_total",
+  help: "Total requests rejected by the distributed rate limiter",
+  labelNames: ["policy", "reason"],
+  registers: [register],
+});

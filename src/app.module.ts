@@ -1,4 +1,9 @@
-import { Module, NestModule, MiddlewareConsumer, OnModuleInit } from "@nestjs/common";
+import {
+  Module,
+  NestModule,
+  MiddlewareConsumer,
+  OnModuleInit,
+} from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { validateEnv } from "./config/env.validation";
@@ -23,6 +28,7 @@ import { DeFiModule } from "./defi/defi.module";
 import { AlertsModule } from "./alerts/alerts.module";
 import { MetricsModule } from "./metrics/metrics.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
+import { RateLimitModule } from "./quota/rate-limit.module";
 
 // Auth entities
 import { User } from "./user/entities/user.entity";
@@ -62,6 +68,7 @@ import { KycGuard } from "./common/guard/kyc.guard";
 import { StrategyAuthGuard } from "./auth/guards/strategy-auth.guard";
 import { SubmissionVerifierService } from "./oracle/submission-verifier.service";
 import { LoggingMiddleware } from "./common/middleware/logging.middleware";
+import { QuotaGuard } from "./common/guard/quota.guard";
 
 @Module({
   imports: [
@@ -146,6 +153,7 @@ import { LoggingMiddleware } from "./common/middleware/logging.middleware";
     AlertsModule,
     MetricsModule,
     AnalyticsModule,
+    RateLimitModule,
   ],
 
   controllers: [AppController],
@@ -159,6 +167,10 @@ import { LoggingMiddleware } from "./common/middleware/logging.middleware";
     {
       provide: APP_GUARD,
       useClass: ThrottlerUserIpGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: QuotaGuard,
     },
     /**
      * StrategyAuthGuard is the default authentication guard for all routes.

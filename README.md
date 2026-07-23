@@ -124,6 +124,7 @@ Email: **security@stellaiverse.com**
 See [SECURITY.md](SECURITY.md) for vulnerability reporting details.
 
 ### Security Documentation
+- [Distributed rate limiting](docs/RATE_LIMITING.md): Redis counters, policies, administration, response headers, and metrics
 - 🔐 [SECURITY.md](SECURITY.md) - Vulnerability reporting policy
 - 📋 [SECURITY_AUDIT.md](SECURITY_AUDIT.md) - Pre-production checklist & threat model
 

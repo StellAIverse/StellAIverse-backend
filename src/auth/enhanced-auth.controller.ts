@@ -15,7 +15,12 @@ import {
 } from "@nestjs/swagger";
 import { JwtAuthGuard } from "./jwt.guard";
 import { EnhancedAuthService } from "./enhanced-auth.service";
-import { RegisterDto, LoginDto } from "./dto/auth.dto";
+import {
+  RegisterDto,
+  LoginDto,
+  PasswordResetRequestDto,
+  PasswordResetConfirmDto,
+} from "./dto/auth.dto";
 import {
   TwoFactorSetupDto,
   TwoFactorVerifyDto,
@@ -218,5 +223,56 @@ export class EnhancedAuthController {
       req.user.sub,
       body.password,
     );
+  }
+
+  @Public()
+  @Post("password-reset")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Request password reset",
+    description: "Send password reset link to user's email",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Password reset request processed",
+  })
+  async requestPasswordReset(@Body() passwordResetRequestDto: PasswordResetRequestDto) {
+    return this.enhancedAuthService.requestPasswordReset(passwordResetRequestDto);
+  }
+
+  @Public()
+  @Post("password-reset/confirm")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Confirm password reset",
+    description: "Reset user's password using the reset token",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Password reset successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Invalid or expired token",
+  })
+  async confirmPasswordReset(@Body() passwordResetConfirmDto: PasswordResetConfirmDto) {
+    return this.enhancedAuthService.confirmPasswordReset(passwordResetConfirmDto);
+  }
+
+  @Post("logout")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Logout",
+    description: "Revoke the refresh token",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Logged out successfully",
+  })
+  async logout(@Body() refreshTokenDto: RefreshTokenDto) {
+    await this.enhancedAuthService.revokeRefreshToken(refreshTokenDto.refreshToken);
+    return { message: "Logged out successfully" };
   }
 }

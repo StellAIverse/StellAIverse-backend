@@ -20,14 +20,18 @@ import {
   TwoFactorAuth,
   TwoFactorType,
   TwoFactorStatus,
+  PasswordResetToken,
 } from "./entities/auth.entity";
 import {
   LoginDto,
   RegisterDto,
   RefreshTokenDto,
   TwoFactorVerifyDto,
+  PasswordResetRequestDto,
+  PasswordResetConfirmDto,
 } from "./dto/auth.dto";
 import { TwoFactorSetupDto } from "./dto/kyc.dto";
+import { v4 as uuidv4 } from "uuid";
 
 @Injectable()
 export class EnhancedAuthService {
@@ -38,6 +42,8 @@ export class EnhancedAuthService {
     private readonly refreshTokenRepository: Repository<RefreshToken>,
     @InjectRepository(TwoFactorAuth)
     private readonly twoFactorRepository: Repository<TwoFactorAuth>,
+    @InjectRepository(PasswordResetToken)
+    private readonly passwordResetTokenRepository: Repository<PasswordResetToken>,
     private readonly jwtService: JwtService,
     @Inject(forwardRef(() => EmailService))
     private readonly emailService: EmailService,
@@ -430,7 +436,78 @@ export class EnhancedAuthService {
     );
   }
 
+  async revokeRefreshToken(refreshToken: string): Promise<void> {
+    const tokenEntity = await this.refreshTokenRepository.findOne({
+      where: { token: refreshToken },
+    });
+    if (tokenEntity) {
+      await this.refreshTokenRepository.update(tokenEntity.id, {
+        revoked: true,
+        revokedAt: new Date(),
+      });
+    }
+  }
+
   async validateUser(userId: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { id: userId } });
+  }
+
+  async requestPasswordReset(
+    passwordResetRequestDto: PasswordResetRequestDto,
+  ): Promise<{ message: string }> {
+    const { email } = passwordResetRequestDto;
+    const user = await this.userRepository.findOne({ where: { email } });
+
+    if (!user) {
+      return { message: "If the email exists, a reset link has been sent." };
+    }
+
+    const resetToken = this.generateRefreshToken();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    const passwordResetToken = this.passwordResetTokenRepository.create({
+      userId: user.id,
+      token: resetToken,
+      expiresAt,
+    });
+
+    await this.passwordResetTokenRepository.save(passwordResetToken);
+
+    await this.emailService.sendPasswordResetEmail(email, resetToken);
+
+    return { message: "If the email exists, a reset link has been sent." };
+  }
+
+  async confirmPasswordReset(
+    passwordResetConfirmDto: PasswordResetConfirmDto,
+  ): Promise<{ message: string }> {
+    const { token, newPassword } = passwordResetConfirmDto;
+
+    const resetToken = await this.passwordResetTokenRepository.findOne({
+      where: { token },
+      relations: ["user"],
+    });
+
+    if (
+      !resetToken ||
+      resetToken.expiresAt < new Date() ||
+      resetToken.used
+    ) {
+      throw new BadRequestException("Invalid or expired reset token");
+    }
+
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    await this.userRepository.update(resetToken.user.id, {
+      password: hashedPassword,
+    });
+
+    await this.passwordResetTokenRepository.update(resetToken.id, {
+      used: true,
+    });
+
+    await this.revokeAllRefreshTokens(resetToken.user.id);
+
+    return { message: "Password reset successfully" };
   }
 }

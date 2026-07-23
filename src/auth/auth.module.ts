@@ -34,7 +34,7 @@ import { EnhancedAuthService } from "./enhanced-auth.service";
 import { User } from "src/user/entities/user.entity";
 import { EmailVerification } from "./entities/email-verification.entity";
 import { Wallet } from "./entities/wallet.entity";
-import { RefreshToken, TwoFactorAuth } from "./entities/auth.entity";
+import { RefreshToken, TwoFactorAuth, PasswordResetToken } from "./entities/auth.entity";
 
 @Module({
   imports: [
@@ -47,6 +47,7 @@ import { RefreshToken, TwoFactorAuth } from "./entities/auth.entity";
       Wallet,
       RefreshToken,
       TwoFactorAuth,
+      PasswordResetToken,
     ]),
   ],
   controllers: [AuthController, EnhancedAuthController],
