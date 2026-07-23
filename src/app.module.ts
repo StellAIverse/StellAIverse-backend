@@ -22,6 +22,7 @@ import { RiskManagementModule } from "./risk-management/risk-management.module";
 import { DeFiModule } from "./defi/defi.module";
 import { AlertsModule } from "./alerts/alerts.module";
 import { MetricsModule } from "./metrics/metrics.module";
+import { AnalyticsModule } from "./analytics/analytics.module";
 
 // Auth entities
 import { User } from "./user/entities/user.entity";
@@ -49,6 +50,10 @@ import { Alert } from "./alerts/entities/alert.entity";
 import { AlertTriggerLog } from "./alerts/entities/alert-trigger-log.entity";
 import { AlertPreference } from "./alerts/entities/alert-preference.entity";
 import { AlertDeliveryLog } from "./alerts/entities/alert-delivery-log.entity";
+
+// Analytics entities
+import { AnalyticsEvent } from "./analytics/entities/analytics-event.entity";
+import { DailyMetric } from "./analytics/entities/daily-metric.entity";
 
 // Guards
 import { ThrottlerUserIpGuard } from "./common/guard/throttler.guard";
@@ -104,6 +109,8 @@ import { LoggingMiddleware } from "./common/middleware/logging.middleware";
             AlertTriggerLog,
             AlertPreference,
             AlertDeliveryLog,
+            AnalyticsEvent,
+            DailyMetric,
           ],
           synchronize: !isProduction,
           logging: isProduction ? ["error"] : ["error", "warn", "schema"],
@@ -138,6 +145,7 @@ import { LoggingMiddleware } from "./common/middleware/logging.middleware";
     DeFiModule,
     AlertsModule,
     MetricsModule,
+    AnalyticsModule,
   ],
 
   controllers: [AppController],
