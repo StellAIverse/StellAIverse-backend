@@ -16,10 +16,10 @@ import {
   ApiBearerAuth,
   ApiQuery,
 } from "@nestjs/swagger";
-import { AnalyticsService } from "./analytics.service";
-import { BatchIngestEventsDto, IngestEventDto } from "./dto/ingest-events.dto";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { Public } from "../common/decorators/public.decorator";
+import { AnalyticsService } from "../analytics.service";
+import { BatchIngestEventsDto, IngestEventDto } from "../dto/ingest-events.dto";
+import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
+import { Public } from "../../common/decorators/public.decorator";
 
 @ApiTags("Analytics")
 @Controller("analytics")
