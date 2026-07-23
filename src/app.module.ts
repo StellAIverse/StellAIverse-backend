@@ -27,6 +27,7 @@ import { RiskManagementModule } from "./risk-management/risk-management.module";
 import { DeFiModule } from "./defi/defi.module";
 import { AlertsModule } from "./alerts/alerts.module";
 import { MetricsModule } from "./metrics/metrics.module";
+import { AnalyticsModule } from "./analytics/analytics.module";
 import { RateLimitModule } from "./quota/rate-limit.module";
 
 // Auth entities
@@ -55,6 +56,10 @@ import { Alert } from "./alerts/entities/alert.entity";
 import { AlertTriggerLog } from "./alerts/entities/alert-trigger-log.entity";
 import { AlertPreference } from "./alerts/entities/alert-preference.entity";
 import { AlertDeliveryLog } from "./alerts/entities/alert-delivery-log.entity";
+
+// Analytics entities
+import { AnalyticsEvent } from "./analytics/entities/analytics-event.entity";
+import { DailyMetric } from "./analytics/entities/daily-metric.entity";
 
 // Guards
 import { ThrottlerUserIpGuard } from "./common/guard/throttler.guard";
@@ -111,6 +116,8 @@ import { QuotaGuard } from "./common/guard/quota.guard";
             AlertTriggerLog,
             AlertPreference,
             AlertDeliveryLog,
+            AnalyticsEvent,
+            DailyMetric,
           ],
           synchronize: !isProduction,
           logging: isProduction ? ["error"] : ["error", "warn", "schema"],
@@ -145,6 +152,7 @@ import { QuotaGuard } from "./common/guard/quota.guard";
     DeFiModule,
     AlertsModule,
     MetricsModule,
+    AnalyticsModule,
     RateLimitModule,
   ],
 
