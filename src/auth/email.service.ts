@@ -213,6 +213,80 @@ export class EmailService {
     };
   }
 
+  async sendPasswordResetEmail(
+    email: string,
+    token: string,
+  ): Promise<{ messageId: string; previewUrl?: string }> {
+    const resetUrl = `${this.configService.get<string>("PASSWORD_RESET_URL")}?token=${token}`;
+
+    const info = await this.transporter.sendMail({
+      from: this.configService.get<string>("EMAIL_FROM"),
+      to: email,
+      subject: "Reset your password - StellAIverse",
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+              .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+              .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+              .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+              .code { background: #fff; padding: 15px; border-left: 4px solid #667eea; margin: 20px 0; font-family: monospace; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>🔑 Reset Your Password</h1>
+              </div>
+              <div class="content">
+                <p>Hello!</p>
+                <p>You've requested to reset your password for your StellAIverse account.</p>
+                <p>Click the button below to reset your password:</p>
+                <p style="text-align: center;">
+                  <a href="${resetUrl}" class="button">Reset Password</a>
+                </p>
+                <p>Or copy and paste this link into your browser:</p>
+                <div class="code">${resetUrl}</div>
+                <p><strong>This link will expire in 15 minutes.</strong></p>
+                <p>If you didn't request this password reset, you can safely ignore this email.</p>
+              </div>
+              <div class="footer">
+                <p>© ${new Date().getFullYear()} StellAIverse. All rights reserved.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `,
+      text: `
+        Reset Your Password - StellAIverse
+        
+        You've requested to reset your password for your StellAIverse account.
+        
+        Click the link below to reset your password:
+        ${resetUrl}
+        
+        This link will expire in 15 minutes.
+        
+        If you didn't request this password reset, you can safely ignore this email.
+      `,
+    });
+
+    const previewUrl = nodemailer.getTestMessageUrl(info);
+
+    if (previewUrl) {
+      this.logger.log(`Password reset email preview URL: ${previewUrl}`);
+    }
+
+    return {
+      messageId: info.messageId,
+      previewUrl: previewUrl || undefined,
+    };
+  }
+
   /**
    * Generic send mail method for custom emails
    */

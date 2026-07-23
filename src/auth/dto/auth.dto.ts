@@ -60,3 +60,20 @@ export class AuthStatusDto {
     role: string;
   };
 }
+
+export class PasswordResetRequestDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+}
+
+export class PasswordResetConfirmDto {
+  @IsString()
+  @IsNotEmpty()
+  token: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  newPassword: string;
+}
