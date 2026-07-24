@@ -30,8 +30,12 @@ import { MetricsModule } from "./metrics/metrics.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { RateLimitModule } from "./quota/rate-limit.module";
 import { NotificationsModule } from "./notifications/notifications.module";
+import { MessagingModule } from "./messaging/messaging.module";
 
 // Auth entities
+import { Conversation } from "./messaging/entities/conversation.entity";
+import { Message } from "./messaging/entities/message.entity";
+import { UserPresence } from "./messaging/entities/user-presence.entity";
 import { User } from "./user/entities/user.entity";
 import { EmailVerification } from "./auth/entities/email-verification.entity";
 import { Wallet } from "./auth/entities/wallet.entity";
@@ -128,6 +132,9 @@ import { QuotaGuard } from "./common/guard/quota.guard";
             Notification,
             NotificationDeliveryLog,
             NotificationPreference,
+            Conversation,
+            Message,
+            UserPresence,
           ],
           synchronize: !isProduction,
           logging: isProduction ? ["error"] : ["error", "warn", "schema"],
@@ -165,6 +172,7 @@ import { QuotaGuard } from "./common/guard/quota.guard";
     AnalyticsModule,
     RateLimitModule,
     NotificationsModule,
+    MessagingModule,
   ],
 
   controllers: [AppController],
