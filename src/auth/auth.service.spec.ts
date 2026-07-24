@@ -34,7 +34,7 @@ describe("AuthService", () => {
     role: UserRole.USER,
     createdAt: new Date(),
     updatedAt: new Date(),
-  } as any;
+  } as User;
 
   const mockJwtService = {
     sign: jest.fn(),

@@ -36,7 +36,7 @@ describe("WalletAuthService", () => {
     role: UserRole.USER,
     createdAt: new Date(),
     updatedAt: new Date(),
-  } as any;
+  } as User;
 
   const mockChallengeService = {
     issueChallengeForAddress: jest.fn(),

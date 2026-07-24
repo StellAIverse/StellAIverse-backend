@@ -7,11 +7,10 @@ import {
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { validateEnv } from "./config/env.validation";
-import { APP_GUARD, APP_FILTER } from "@nestjs/core";
+import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { TerminusModule } from "@nestjs/terminus";
 import { EventEmitterModule } from "@nestjs/event-emitter";
-import { SentryModule, SentryGlobalFilter } from "@sentry/nestjs/setup";
 
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
@@ -22,6 +21,7 @@ import { UserModule } from "./user/user.module";
 import { ProfileModule } from "./profile/profile.module";
 import { AuditModule } from "./audit/audit.module";
 import { OracleModule } from "./oracle/oracle.module";
+import { WorkersModule } from "./workers/workers.module";
 import { PortfolioModule } from "./portfolio/portfolio.module";
 import { RiskManagementModule } from "./risk-management/risk-management.module";
 import { DeFiModule } from "./defi/defi.module";
@@ -48,6 +48,8 @@ import { SubmissionNonce } from "./oracle/entities/submission-nonce.entity";
 import { AgentEvent } from "./audit/entities/agent-event.entity";
 import { ComputeResult } from "./audit/entities/compute-result.entity";
 import { ProvenanceRecord } from "./audit/entities/provenance-record.entity";
+import { JobEntity } from "./workers/entities/job.entity";
+import { IdempotencyKey } from "./workers/entities/idempotency-key.entity";
 
 // DeFi entities
 import { DeFiPosition } from "./defi/entities/defi-position.entity";
@@ -88,8 +90,6 @@ import { QuotaGuard } from "./common/guard/quota.guard";
       validate: validateEnv,
     }),
 
-    SentryModule.forRoot(),
-
     EventEmitterModule.forRoot(),
 
     // ✅ ONLY ONE TypeORM CONFIG (Async)
@@ -117,6 +117,8 @@ import { QuotaGuard } from "./common/guard/quota.guard";
             AgentEvent,
             ComputeResult,
             ProvenanceRecord,
+            JobEntity,
+            IdempotencyKey,
             DeFiPosition,
             DeFiYieldRecord,
             DeFiTransaction,
@@ -164,6 +166,7 @@ import { QuotaGuard } from "./common/guard/quota.guard";
     ProfileModule,
     AuditModule,
     OracleModule,
+    WorkersModule,
     PortfolioModule,
     RiskManagementModule,
     DeFiModule,
@@ -180,10 +183,6 @@ import { QuotaGuard } from "./common/guard/quota.guard";
   providers: [
     AppService,
     {
-      provide: APP_FILTER,
-      useClass: SentryGlobalFilter,
-    },
-    {
       provide: APP_GUARD,
       useClass: ThrottlerUserIpGuard,
     },
@@ -191,13 +190,6 @@ import { QuotaGuard } from "./common/guard/quota.guard";
       provide: APP_GUARD,
       useClass: QuotaGuard,
     },
-    /**
-     * StrategyAuthGuard is the default authentication guard for all routes.
-     * It validates JWT tokens through the StrategyRegistry and supports
-     * multiple auth types (wallet, traditional, OAuth, API key).
-     *
-     * Routes that should be publicly accessible must be decorated with @Public().
-     */
     {
       provide: APP_GUARD,
       useClass: StrategyAuthGuard,
