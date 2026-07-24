@@ -100,9 +100,8 @@ export class EnvironmentLoaderService extends EventEmitter {
 
       // Setup hot-reloading if enabled
       if (options.hotReload) {
-        this.setupHotReload(absolutePath, options);
+        this.setupHotReload(absolutePath, { ...options });
       }
-
       this.emit('environmentLoaded', loadedEnv);
       this.logger.log(`Successfully loaded environment: ${metadata.name} v${metadata.version}`);
 
@@ -477,7 +476,7 @@ export class EnvironmentLoaderService extends EventEmitter {
   /**
    * Setup hot-reload watching for a file
    */
-  private setupHotReload(filePath: string, options: EnvironmentLoadOptions): void {
+  private setupHotReload(filePath: string, options: Partial<EnvironmentLoadOptions>): void {
     // Clear existing watcher
     if (this.watchers.has(filePath)) {
       clearInterval(this.watchers.get(filePath));

@@ -53,7 +53,6 @@ export const databaseConfig = registerAs(
     poolMax: parseInt(process.env.DB_POOL_MAX || "10", 10),
   }),
 );
-
 /**
  * Redis configuration factory
  */

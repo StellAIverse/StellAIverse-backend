@@ -5,7 +5,7 @@ import { fork, ChildProcess } from "child_process";
 import * as path from "path";
 import { PluginStatus } from "./plugin.interface";
 
-interface ManagedPlugin {
+export interface ManagedPlugin {
   id: string;
   path: string;
   status: PluginStatus;

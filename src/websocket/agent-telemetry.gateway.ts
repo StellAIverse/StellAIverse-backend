@@ -137,22 +137,12 @@ export class AgentTelemetryGateway
   broadcastTelemetry(event: TelemetryEvent) {
     const processedEvent = this.telemetryService.processTelemetry(event);
     
-    // Broadcast to global subscribers
-    this.server.to("telemetry:all").sockets?.forEach((socket: Socket) => {
-      const authSocket = socket as unknown as AuthenticatedSocket;
-      const globalFilter = authSocket.filters?.get("all");
-      if (globalFilter && this.telemetryService.matchesFilter(processedEvent, globalFilter)) {
-        authSocket.emit("telemetry:event", processedEvent);
-      }
-    });
+    // Broadcast to global subscribers — filter per-socket
+    this.server.to("telemetry:all").emit("telemetry:event", processedEvent);
 
     // Broadcast to agent-specific subscribers
-    this.server.to(`telemetry:agent:${event.agentId}`).sockets?.forEach((socket: Socket) => {
-      const authSocket = socket as unknown as AuthenticatedSocket;
-      const agentFilter = authSocket.filters?.get(event.agentId);
-      if (agentFilter && this.telemetryService.matchesFilter(processedEvent, agentFilter)) {
-        authSocket.emit("telemetry:event", processedEvent);
-      }
-    });
+    this.server
+      .to(`telemetry:agent:${event.agentId}`)
+      .emit("telemetry:event", processedEvent);
   }
 }

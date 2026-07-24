@@ -1,9 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import * as request from "supertest";
-import { AgentsModule } from "./agents.module";
+import { AgentsModule } from "./agent,module";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { Agent, AgentCapability, AgentStatus } from "./entities/agent.entity";
+import { Agent, AgentCapability, AgentStatus } from "./agent.entity";
 
 describe("AgentsController (e2e)", () => {
   let app: INestApplication;

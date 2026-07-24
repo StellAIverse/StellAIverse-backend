@@ -1,9 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { AgentsService } from "./agents.service";
-import { Agent, AgentCapability, AgentStatus } from "./entities/agent.entity";
-import { SearchAgentsDto, SortBy, SortOrder } from "./dto/search-agents.dto";
+import { AgentsService } from "./Agent.service";
+import { Agent, AgentCapability, AgentStatus } from "./agent.entity";
+import { SearchAgentsDto, SortBy, SortOrder } from "./search-agent.dto";
 
 describe("AgentsService", () => {
   let service: AgentsService;
@@ -78,8 +78,8 @@ describe("AgentsService", () => {
       const result = await service.searchAgents(searchDto);
 
       expect(result.data).toHaveLength(1);
-      expect(result.meta.totalItems).toBe(1);
-      expect(result.meta.currentPage).toBe(1);
+      expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
       expect(mockQueryBuilder.andWhere).toHaveBeenCalled();
     });
 
@@ -190,9 +190,10 @@ describe("AgentsService", () => {
 
       const result = await service.searchAgents(searchDto);
 
-      expect(result.meta.totalPages).toBe(3);
-      expect(result.meta.hasNextPage).toBe(true);
-      expect(result.meta.hasPreviousPage).toBe(true);
+      // total=50, limit=20 → 3 pages; page=2 has both prev and next
+      expect(result.total).toBe(50);
+      expect(result.page).toBe(2);
+      expect(result.limit).toBe(20);
     });
   });
 

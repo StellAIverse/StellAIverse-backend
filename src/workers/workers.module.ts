@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { BullModule } from "@nestjs/bull";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule } from "@nestjs/config";
+import { HttpModule } from "@nestjs/axios";
 import { WorkersController } from "./workers.controller";
 import { WorkersAdminController } from "./workers-admin.controller";
 import { WorkersService } from "./workers.service";
@@ -32,6 +33,7 @@ import { WorkerHealthIndicator } from "./indicators/worker-health.indicator";
 @Module({
   imports: [
     ConfigModule,
+    HttpModule,
     TypeOrmModule.forFeature([JobEntity, IdempotencyKey]),
     BullModule.registerQueue(
       {

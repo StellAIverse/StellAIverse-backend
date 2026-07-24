@@ -2,8 +2,8 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import * as request from "supertest";
 import { BullModule } from "@nestjs/bull";
-import { QueueModule } from "./queue.module";
-import { QueueController } from "./queue.controller";
+import { QueueModule } from "./compute-job-queue.module";
+import { QueueController } from "./compute-job-queue.controller";
 
 describe("QueueController (e2e)", () => {
   let app: INestApplication;

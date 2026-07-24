@@ -1,7 +1,8 @@
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import Redis from "ioredis";
-import { PolicyService, PolicyEntity, PolicyScope } from "./policy.service";
+import { PolicyService } from "./policy.service";
+import { PolicyScope } from "./policy.entity";
 
 export interface QuotaResult {
   allowed: boolean;
@@ -44,7 +45,7 @@ export class RateLimiterService implements OnModuleDestroy {
     );
   }
 
-  private async checkQuota(
+  async checkQuota(
     key: string,
     limit: number,
     windowMs: number,

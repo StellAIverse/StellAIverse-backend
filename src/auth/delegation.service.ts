@@ -191,7 +191,7 @@ export class DelegationService {
     const challenge = this.generateDelegationChallenge(
       delegatorWallet.address,
       delegateWallet.address,
-      delegateWallet.delegationPermissions || [],
+      (delegateWallet.delegationPermissions || []) as DelegationPermission[],
       delegateWallet.delegationExpiresAt!,
     );
 
@@ -227,7 +227,7 @@ export class DelegationService {
         id: delegateWallet.id,
         delegatorWalletId: delegatorWallet.id,
         delegateWalletId: delegateWallet.id,
-        permissions: delegateWallet.delegationPermissions || [],
+        permissions: (delegateWallet.delegationPermissions || []) as DelegationPermission[],
         grantedAt: delegateWallet.verifiedAt,
         expiresAt: delegateWallet.delegationExpiresAt!,
         status: 'active',
@@ -301,11 +301,11 @@ export class DelegationService {
         const delegator = await this.walletRepository.findOne({
           where: { id: w.delegatedById },
         });
-        return {
+      return {
           id: w.id,
           delegatorWalletId: w.delegatedById!,
           delegateWalletId: w.id,
-          permissions: w.delegationPermissions || [],
+          permissions: (w.delegationPermissions || []) as DelegationPermission[],
           grantedAt: w.verifiedAt!,
           expiresAt: w.delegationExpiresAt!,
           revokedAt: w.status === WalletStatus.REVOKED ? new Date() : undefined,
@@ -344,7 +344,7 @@ export class DelegationService {
       id: w.id,
       delegatorWalletId: walletId,
       delegateWalletId: w.id,
-      permissions: w.delegationPermissions || [],
+      permissions: (w.delegationPermissions || []) as DelegationPermission[],
       grantedAt: w.verifiedAt!,
       expiresAt: w.delegationExpiresAt!,
       revokedAt: w.status === WalletStatus.REVOKED ? new Date() : undefined,
@@ -387,7 +387,7 @@ export class DelegationService {
     }
 
     // Check permission
-    const permissions = delegateWallet.delegationPermissions || [];
+    const permissions = (delegateWallet.delegationPermissions || []) as DelegationPermission[];
     if (!permissions.includes(requiredPermission)) {
       return {
         valid: false,

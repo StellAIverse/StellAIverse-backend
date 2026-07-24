@@ -111,28 +111,28 @@ export class ConfigService {
    * Check if running in development mode
    */
   get isDevelopment(): boolean {
-    return this.app.isDevelopment;
+    return this.app.isDevelopment ?? process.env.NODE_ENV === "development";
   }
 
   /**
    * Check if running in production mode
    */
   get isProduction(): boolean {
-    return this.app.isProduction;
+    return this.app.isProduction ?? process.env.NODE_ENV === "production";
   }
 
   /**
    * Check if running in staging mode
    */
   get isStaging(): boolean {
-    return this.app.isStaging;
+    return this.app.isStaging ?? process.env.NODE_ENV === "staging";
   }
 
   /**
    * Check if running in test mode
    */
   get isTest(): boolean {
-    return this.app.isTest;
+    return this.app.isTest ?? process.env.NODE_ENV === "test";
   }
 
   /**

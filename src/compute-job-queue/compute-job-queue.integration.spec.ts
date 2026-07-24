@@ -2,9 +2,9 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication } from "@nestjs/common";
 import { BullModule, getQueueToken } from "@nestjs/bull";
 import { Queue } from "bull";
-import { QueueModule } from "./queue.module";
+import { QueueModule } from "./compute-job-queue.module";
 import { QueueService } from "./queue.service";
-import { ComputeJobProcessor } from "./processors/compute-job.processor";
+import { ComputeJobProcessor } from "./compute-job.processor";
 
 describe("QueueModule (Integration)", () => {
   let app: INestApplication;

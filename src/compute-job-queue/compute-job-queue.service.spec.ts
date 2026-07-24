@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bull";
-import { Queue, Job, JobsOptions } from "bull";
+import { Queue, Job, JobOptions } from "bull";
 
 export interface ComputeJobData {
   type: string;
@@ -31,7 +31,7 @@ export class QueueService {
    */
   async addComputeJob(
     data: ComputeJobData,
-    options?: JobsOptions,
+    options?: JobOptions,
   ): Promise<Job<ComputeJobData>> {
     try {
       const job = await this.computeQueue.add(data.type, data, {

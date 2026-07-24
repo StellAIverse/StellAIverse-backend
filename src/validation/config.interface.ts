@@ -9,6 +9,13 @@ export interface AppConfig {
   host: string;
   url: string;
   env: string;
+  // Optional convenience fields populated by configuration.ts
+  apiPrefix?: string;
+  apiVersion?: string;
+  isDevelopment?: boolean;
+  isProduction?: boolean;
+  isStaging?: boolean;
+  isTest?: boolean;
 }
 
 export interface DatabaseConfig {
@@ -17,21 +24,24 @@ export interface DatabaseConfig {
   username: string;
   password: string;
   database: string;
-  url: string;
-  synchronize: boolean;
-  logging: boolean;
-  ssl: boolean;
-  maxConnections: number;
-  connectionTimeout: number;
-  idleTimeout: number;
+  url?: string;
+  synchronize?: boolean;
+  logging?: boolean;
+  ssl?: boolean;
+  maxConnections?: number;
+  connectionTimeout?: number;
+  idleTimeout?: number;
+  poolMin?: number;
+  poolMax?: number;
 }
 
 export interface RedisConfig {
   host: string;
   port: number;
   password?: string;
-  url: string;
+  url?: string;
   db?: number;
+  ttl?: number;
   keyPrefix?: string;
   maxRetriesPerRequest?: number;
   retryDelayOnFailover?: number;
@@ -50,15 +60,23 @@ export interface JwtConfig {
 
 export interface SecurityConfig {
   encryptionKey: string;
-  bcryptRounds: number;
+  bcryptRounds?: number;
   sessionSecret?: string;
-  maxLoginAttempts: number;
-  lockoutDuration: number;
-  passwordMinLength: number;
-  passwordRequireUppercase: boolean;
-  passwordRequireLowercase: boolean;
-  passwordRequireNumbers: boolean;
-  passwordRequireSymbols: boolean;
+  maxLoginAttempts?: number;
+  lockoutDuration?: number;
+  passwordMinLength?: number;
+  passwordRequireUppercase?: boolean;
+  passwordRequireLowercase?: boolean;
+  passwordRequireNumbers?: boolean;
+  passwordRequireSymbols?: boolean;
+  cors?: {
+    enabled?: boolean;
+    origin?: string[];
+  };
+  rateLimit?: {
+    ttl?: number;
+    max?: number;
+  };
 }
 
 export interface AwsConfig {
@@ -85,6 +103,18 @@ export interface EmailConfig {
     verification?: string;
     passwordReset?: string;
   };
+  // Extended fields used by configuration.ts
+  smtp?: {
+    host?: string;
+    port?: number;
+    secure?: boolean;
+    user?: string;
+    password?: string;
+    from?: string;
+  };
+  sendgrid?: {
+    apiKey?: string;
+  };
 }
 
 export interface LoggingConfig {
@@ -92,6 +122,8 @@ export interface LoggingConfig {
   format?: string;
   colorize?: boolean;
   timestamp?: boolean;
+  fileEnabled?: boolean;
+  filePath?: string;
   file?: {
     enabled?: boolean;
     filename?: string;
@@ -105,10 +137,14 @@ export interface LoggingConfig {
 }
 
 export interface MonitoringConfig {
-  enabled: boolean;
+  enabled?: boolean;
   metricsPath?: string;
   defaultMetrics?: boolean;
   customMetrics?: boolean;
+  sentry?: {
+    dsn?: string;
+    environment?: string;
+  };
   prometheus?: {
     enabled?: boolean;
     port?: number;
@@ -141,6 +177,15 @@ export interface IntegrationsConfig {
     projectId?: string;
     secretKey?: string;
   };
+  stripe?: {
+    secretKey?: string;
+    webhookSecret?: string;
+  };
+  google?: {
+    clientId?: string;
+    clientSecret?: string;
+    callbackUrl?: string;
+  };
 }
 
 export interface FeatureConfig {
@@ -155,7 +200,14 @@ export interface FeatureConfig {
   enableTracing?: boolean;
   maintenanceMode?: boolean;
   betaFeatures?: boolean;
+  // Additional flags used by configuration.ts
+  registrationEnabled?: boolean;
+  emailVerification?: boolean;
+  swaggerEnabled?: boolean;
 }
+
+/** Alias kept for backward compatibility */
+export type FeatureFlags = FeatureConfig;
 
 export interface MiscConfig {
   corsOrigins?: string[];
@@ -166,6 +218,8 @@ export interface MiscConfig {
   defaultLanguage?: string;
   timezone?: string;
   dateFormat?: string;
+  defaultPageSize?: number;
+  maxPageSize?: number;
   pagination?: {
     defaultLimit?: number;
     maxLimit?: number;
