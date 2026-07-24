@@ -1,34 +1,57 @@
+/**
+ * AuthModule — top-level auth barrel module.
+ *
+ * Composes AuthCoreModule + AuthStrategiesModule with the additional
+ * services that belong to the full auth feature (wallet auth, email linking,
+ * session recovery, delegation, enhanced 2FA auth, etc.).
+ *
+ * Split structure:
+ *  ┌─ AuthCoreModule          TokenBlacklistService, JwtStrategy, JwtAuthGuard, AuthService (legacy)
+ *  └─ AuthStrategiesModule    StrategyRegistry, StrategyAuthGuard, all strategy impls
+ *        └─ (re-exports AuthCoreModule)
+ *
+ * See docs/AUTH_FLOW.md for a full description of the authentication topology.
+ */
 import { Module } from "@nestjs/common";
-import { JwtModule } from "@nestjs/jwt";
-import { PassportModule } from "@nestjs/passport";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { ConfigModule } from "@nestjs/config";
+
+import { AuthCoreModule } from "./auth-core.module";
+import { AuthStrategiesModule } from "./auth-strategies.module";
+
 import { AuthController } from "./auth.controller";
-import { AuthService } from "./auth.service";
+import { EnhancedAuthController } from "./enhanced-auth.controller";
+
 import { ChallengeService } from "./challenge.service";
-import { JwtStrategy } from "./jwt.strategy";
-import { JwtAuthGuard } from "./jwt.guard";
 import { WalletAuthService } from "./wallet-auth.service";
 import { EmailService } from "./email.service";
 import { EmailLinkingService } from "./email-linking.service";
 import { RecoveryService } from "./recovery.service";
 import { SessionRecoveryService } from "./session-recovery.service";
 import { DelegationService } from "./delegation.service";
-import { User } from "../user/entities/user.entity";
+import { EnhancedAuthService } from "./enhanced-auth.service";
+
+import { User } from "src/user/entities/user.entity";
 import { EmailVerification } from "./entities/email-verification.entity";
 import { Wallet } from "./entities/wallet.entity";
+import { RefreshToken, TwoFactorAuth, PasswordResetToken } from "./entities/auth.entity";
 
 @Module({
   imports: [
-    PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: "24h" },
-    }),
-    TypeOrmModule.forFeature([User, EmailVerification, Wallet]),
+    ConfigModule,
+    AuthCoreModule,
+    AuthStrategiesModule,
+    TypeOrmModule.forFeature([
+      User,
+      EmailVerification,
+      Wallet,
+      RefreshToken,
+      TwoFactorAuth,
+      PasswordResetToken,
+    ]),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, EnhancedAuthController],
   providers: [
-    AuthService,
     ChallengeService,
     WalletAuthService,
     EmailService,
@@ -36,17 +59,19 @@ import { Wallet } from "./entities/wallet.entity";
     RecoveryService,
     SessionRecoveryService,
     DelegationService,
-    JwtStrategy,
-    JwtAuthGuard,
+    EnhancedAuthService,
   ],
   exports: [
-    AuthService,
+    // Re-export sub-modules so any module importing AuthModule gets everything.
+    AuthCoreModule,
+    AuthStrategiesModule,
+    // Feature services
     ChallengeService,
     WalletAuthService,
     EmailLinkingService,
     SessionRecoveryService,
     DelegationService,
-    JwtAuthGuard,
+    EnhancedAuthService,
   ],
 })
 export class AuthModule {}

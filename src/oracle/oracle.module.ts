@@ -7,8 +7,10 @@ import { PayloadSigningService } from "./services/payload-signing.service";
 import { NonceManagementService } from "./services/nonce-management.service";
 import { SubmitterService } from "./services/submitter.service";
 import { SubmissionBatchService } from "./services/submission-batch.service";
+import { SubmissionVerifierService } from "./submission-verifier.service";
 import { SignedPayload } from "./entities/signed-payload.entity";
 import { SubmissionNonce } from "./entities/submission-nonce.entity";
+import { AuditModule } from "../audit/audit.module";
 
 /**
  * Oracle Module
@@ -18,6 +20,7 @@ import { SubmissionNonce } from "./entities/submission-nonce.entity";
   imports: [
     TypeOrmModule.forFeature([SignedPayload, SubmissionNonce]),
     ConfigModule,
+    AuditModule,
   ],
   controllers: [OracleController],
   providers: [
@@ -26,6 +29,7 @@ import { SubmissionNonce } from "./entities/submission-nonce.entity";
     NonceManagementService,
     SubmitterService,
     SubmissionBatchService,
+    SubmissionVerifierService,
   ],
   exports: [
     OracleService,
@@ -33,6 +37,7 @@ import { SubmissionNonce } from "./entities/submission-nonce.entity";
     NonceManagementService,
     SubmitterService,
     SubmissionBatchService,
+    SubmissionVerifierService,
   ],
 })
 export class OracleModule {}

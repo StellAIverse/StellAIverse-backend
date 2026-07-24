@@ -1,65 +1,136 @@
-import { Test, TestingModule } from "@nestjs/testing";
-import { ConfigService } from "@nestjs/config";
 import { RateLimiterService } from "./rate-limiter.service";
-import Redis from "ioredis";
+import {
+  QuotaResult,
+  RateLimitList,
+  RateLimitPolicy,
+  RateLimitStore,
+} from "./rate-limit.types";
 
-jest.mock("ioredis");
+class AtomicTestStore implements RateLimitStore {
+  readonly policies = new Map<string, RateLimitPolicy>();
+  readonly lists = {
+    whitelist: new Set<string>(),
+    blacklist: new Set<string>(),
+  };
+  private readonly buckets = new Map<
+    string,
+    { tokens: number; updatedAt: number }
+  >();
+
+  async consume(
+    identifier: string,
+    policy: RateLimitPolicy,
+    nowMs = Date.now(),
+  ): Promise<QuotaResult> {
+    const capacity = policy.limit + policy.burst;
+    const refillPerMs = policy.limit / policy.windowMs;
+    const current = this.buckets.get(identifier) ?? {
+      tokens: capacity,
+      updatedAt: nowMs,
+    };
+    const tokens = Math.min(
+      capacity,
+      current.tokens + Math.max(0, nowMs - current.updatedAt) * refillPerMs,
+    );
+    const allowed = tokens >= 1;
+    const remainingTokens = allowed ? tokens - 1 : tokens;
+    this.buckets.set(identifier, {
+      tokens: remainingTokens,
+      updatedAt: nowMs,
+    });
+
+    return {
+      allowed,
+      limit: capacity,
+      remaining: Math.floor(remainingTokens),
+      resetMs: allowed
+        ? policy.windowMs
+        : Math.ceil((1 - tokens) / refillPerMs),
+      reason: allowed ? "allowed" : "limited",
+    };
+  }
+
+  async getPolicy(identifier: string): Promise<RateLimitPolicy | null> {
+    return this.policies.get(identifier) ?? null;
+  }
+
+  async setPolicy(identifier: string, policy: RateLimitPolicy): Promise<void> {
+    this.policies.set(identifier, policy);
+  }
+
+  async deletePolicy(identifier: string): Promise<void> {
+    this.policies.delete(identifier);
+  }
+
+  async isMember(list: RateLimitList, identifier: string): Promise<boolean> {
+    return this.lists[list].has(identifier);
+  }
+
+  async setMember(
+    list: RateLimitList,
+    identifier: string,
+    enabled: boolean,
+  ): Promise<void> {
+    if (enabled) this.lists[list].add(identifier);
+    else this.lists[list].delete(identifier);
+  }
+}
 
 describe("RateLimiterService", () => {
-  let service: RateLimiterService;
-  let redisMock: any;
+  it("shares an atomic limit across concurrent service instances", async () => {
+    const store = new AtomicTestStore();
+    const firstInstance = new RateLimiterService(store);
+    const secondInstance = new RateLimiterService(store);
 
-  beforeEach(async () => {
-    redisMock = {
-      eval: jest.fn(),
-      on: jest.fn(),
-      quit: jest.fn(),
-    };
-    (Redis as unknown as jest.Mock).mockReturnValue(redisMock);
+    const results = await Promise.all(
+      Array.from({ length: 20 }, (_, index) =>
+        (index % 2 ? firstInstance : secondInstance).checkQuota(
+          "user:42",
+          10,
+          60_000,
+        ),
+      ),
+    );
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        RateLimiterService,
-        {
-          provide: ConfigService,
-          useValue: {
-            get: jest.fn().mockReturnValue("redis://localhost:6379"),
-          },
-        },
-      ],
-    }).compile();
-
-    service = module.get<RateLimiterService>(RateLimiterService);
+    expect(results.filter((result) => result.allowed)).toHaveLength(10);
+    expect(results.filter((result) => !result.allowed)).toHaveLength(10);
   });
 
-  it("should be defined", () => {
-    expect(service).toBeDefined();
+  it("uses an identifier policy override", async () => {
+    const store = new AtomicTestStore();
+    const service = new RateLimiterService(store);
+    await service.setPolicy("api-key:abc", {
+      limit: 1,
+      windowMs: 60_000,
+      burst: 0,
+    });
+
+    expect((await service.checkQuota("api-key:abc", 100, 60_000)).allowed).toBe(
+      true,
+    );
+    expect((await service.checkQuota("api-key:abc", 100, 60_000)).allowed).toBe(
+      false,
+    );
   });
 
-  it("should allow request when quota is available", async () => {
-    redisMock.eval.mockResolvedValue([1, 9]); // allowed=1, remaining=9
+  it("allows whitelisted and rejects blacklisted identifiers", async () => {
+    const store = new AtomicTestStore();
+    const service = new RateLimiterService(store);
 
-    const result = await service.checkQuota("test-key", 10, 60000, 10);
+    await service.setListMembership("whitelist", "user:trusted", true);
+    const allowed = await service.checkQuota("user:trusted", 1, 60_000);
+    expect(allowed).toMatchObject({ allowed: true, reason: "whitelisted" });
 
-    expect(result.allowed).toBe(true);
-    expect(result.remaining).toBe(9);
-    expect(redisMock.eval).toHaveBeenCalled();
+    await service.setListMembership("blacklist", "user:trusted", true);
+    const rejected = await service.checkQuota("user:trusted", 1, 60_000);
+    expect(rejected).toMatchObject({ allowed: false, reason: "blacklisted" });
+    expect(store.lists.whitelist.has("user:trusted")).toBe(false);
   });
 
-  it("should deny request when quota is exhausted", async () => {
-    redisMock.eval.mockResolvedValue([0, 0]); // allowed=0, remaining=0
-
-    const result = await service.checkQuota("test-key", 10, 60000, 10);
-
-    expect(result.allowed).toBe(false);
-    expect(result.remaining).toBe(0);
-  });
-
-  it("should fail open on redis error", async () => {
-    redisMock.eval.mockRejectedValue(new Error("Redis down"));
-
-    const result = await service.checkQuota("test-key", 10, 60000, 10);
-
-    expect(result.allowed).toBe(true);
+  it("rejects invalid policies", async () => {
+    const service = new RateLimiterService(new AtomicTestStore());
+    await expect(
+      service.setPolicy("user:42", { limit: 0, windowMs: 60_000, burst: 0 }),
+    ).rejects.toThrow("positive integer");
   });
 });

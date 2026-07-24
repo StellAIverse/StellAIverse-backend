@@ -2,6 +2,7 @@
 
 import { Injectable, Logger } from "@nestjs/common";
 import { AuditLogService } from "../audit/audit-log.service";
+import { logger } from "../config/logger";
 
 interface OnChainSubmission {
   id: string;
@@ -22,9 +23,7 @@ export class SubmissionVerifierService {
   private pollingInterval = 15000; // 15s
   private isRunning = false;
 
-  constructor(
-    private readonly auditLogService: AuditLogService,
-  ) {}
+  constructor(private readonly auditLogService: AuditLogService) {}
 
   // -------------------------------------
   // START POLLING
@@ -53,7 +52,6 @@ export class SubmissionVerifierService {
       if (result.mismatches.length > 0) {
         await this.triggerAlerts(result);
       }
-
     } catch (err) {
       this.logger.error("Verification failed", err);
     }
@@ -64,9 +62,7 @@ export class SubmissionVerifierService {
   // -------------------------------------
   private async fetchOnChainSubmissions(): Promise<OnChainSubmission[]> {
     // TODO: Replace with actual blockchain adapter (ethers/web3)
-    return [
-      { id: "1", hash: "abc", timestamp: Date.now() },
-    ];
+    return [{ id: "1", hash: "abc", timestamp: Date.now() }];
   }
 
   // -------------------------------------
@@ -74,9 +70,7 @@ export class SubmissionVerifierService {
   // -------------------------------------
   private async fetchOffChainSubmissions(): Promise<OffChainSubmission[]> {
     // TODO: Replace with DB query
-    return [
-      { id: "1", hash: "abc", createdAt: new Date() },
-    ];
+    return [{ id: "1", hash: "abc", createdAt: new Date() }];
   }
 
   // -------------------------------------
@@ -90,7 +84,7 @@ export class SubmissionVerifierService {
     const missing = [];
     const duplicates = [];
 
-    const offChainMap = new Map(offChain.map(o => [o.id, o]));
+    const offChainMap = new Map(offChain.map((o) => [o.id, o]));
 
     for (const on of onChain) {
       const off = offChainMap.get(on.id);
@@ -123,7 +117,7 @@ export class SubmissionVerifierService {
   // -------------------------------------
   private async triggerAlerts(result: any) {
     // 👉 Replace with real integrations
-    console.warn("ALERT: Submission mismatch detected", result);
+    logger.warn({ result }, "ALERT: Submission mismatch detected");
 
     // Example webhook
     // await axios.post(WEBHOOK_URL, result);

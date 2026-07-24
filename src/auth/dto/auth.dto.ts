@@ -1,4 +1,10 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  MinLength,
+  IsOptional,
+} from "class-validator";
 
 export class RegisterDto {
   @IsString()
@@ -13,6 +19,10 @@ export class RegisterDto {
   @IsString()
   @MinLength(8)
   password: string;
+
+  @IsString()
+  @IsOptional()
+  referralCode?: string;
 }
 
 export class LoginDto {
@@ -25,6 +35,22 @@ export class LoginDto {
   password: string;
 }
 
+export class RefreshTokenDto {
+  @IsString()
+  @IsNotEmpty()
+  refreshToken: string;
+}
+
+export class TwoFactorVerifyDto {
+  @IsString()
+  @IsOptional()
+  code?: string;
+
+  @IsString()
+  @IsOptional()
+  backupCode?: string;
+}
+
 export class AuthStatusDto {
   isAuthenticated: boolean;
   user?: {
@@ -33,4 +59,21 @@ export class AuthStatusDto {
     username?: string;
     role: string;
   };
+}
+
+export class PasswordResetRequestDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+}
+
+export class PasswordResetConfirmDto {
+  @IsString()
+  @IsNotEmpty()
+  token: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  newPassword: string;
 }

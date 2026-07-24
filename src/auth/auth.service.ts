@@ -7,22 +7,46 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import * as bcrypt from "bcrypt";
+import { v4 as uuidv4 } from "uuid";
 import { JwtService } from "@nestjs/jwt";
-import { User } from "../user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
 import { RegisterDto, LoginDto } from "./dto/auth.dto";
+import { TokenBlacklistService } from "./token-blacklist.service";
 
+/**
+ * @deprecated AuthService is the **legacy** email/password authentication service.
+ *
+ * Migration path — use the strategy-based equivalents instead:
+ *
+ * | Legacy method          | Replacement                                                    |
+ * |------------------------|----------------------------------------------------------------|
+ * | `register(dto)`        | `EnhancedAuthService.register(dto, ip, ua)` via `POST /api/auth/register` |
+ * | `login(dto)`           | `EnhancedAuthService.login(dto, ip, ua)` via `POST /api/auth/login`       |
+ * | `logout(jti, exp)`     | Already delegates to TokenBlacklistService — no change needed  |
+ * | `getAuthStatus(user)`  | Same shape; no direct equivalent in the new flow               |
+ *
+ * EnhancedAuthService adds: refresh tokens, 2FA, last-login tracking, and
+ * proper account-state checks.  It is available via AuthModule exports.
+ *
+ * This class will be removed once all consumers have been migrated.
+ */
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
+    private readonly tokenBlacklist: TokenBlacklistService,
   ) {}
 
+  /**
+   * @deprecated Use {@link EnhancedAuthService.register} for new code.
+   * Registers a user with email/password and returns a short-lived JWT.
+   */
   async register(
     registerDto: RegisterDto,
   ): Promise<{ token: string; user: Partial<User> }> {
-    const { email, password, username } = registerDto;
+    const { email, password, username, referralCode } = registerDto;
 
     // Check if user already exists
     const existingUser = await this.userRepository.findOne({
@@ -42,24 +66,52 @@ export class AuthService {
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+    // Generate unique referral code for the new user
+    const userReferralCode = uuidv4().substring(0, 8).toUpperCase();
+
+    // Check if a referral code was provided
+    let referredBy: User | null = null;
+    if (referralCode) {
+      referredBy = await this.userRepository.findOne({
+        where: { referralCode: referralCode.toUpperCase() },
+      });
+      if (!referredBy) {
+        throw new BadRequestException("Invalid referral code");
+      }
+    }
+
     // Create user
     const user = this.userRepository.create({
       email,
       password: hashedPassword,
       username,
       walletAddress: `email_${email}`, // Generate a pseudo wallet address for email users
-      emailVerified: false, // Could implement email verification later
+      emailVerified: false,
+      referralCode: userReferralCode,
+      referredBy: referredBy || undefined,
     });
 
     await this.userRepository.save(user);
 
-    // Generate JWT token
+    // Trigger reward logic if referred
+    // TODO: Implement reward service integration when available
+    // if (user.referredById) {
+    //   this.rewardService
+    //     .handleTrigger(RewardTrigger.REGISTRATION, user.id)
+    //     .catch((err) => {
+    //       console.error("Failed to trigger registration reward", err);
+    //     });
+    // }
+
+    // Generate JWT token with jti for replay attack prevention
+    const jti = uuidv4();
     const payload = {
       sub: user.id,
       email: user.email,
       username: user.username,
+      jti,
     };
-    const token = this.jwtService.sign(payload);
+    const token = this.jwtService.sign(payload, { expiresIn: "15m" });
 
     return {
       token,
@@ -68,10 +120,15 @@ export class AuthService {
         email: user.email,
         username: user.username,
         role: user.role,
+        referralCode: user.referralCode,
       },
     };
   }
 
+  /**
+   * @deprecated Use {@link EnhancedAuthService.login} for new code.
+   * Authenticates a user with email/password and returns a short-lived JWT.
+   */
   async login(
     loginDto: LoginDto,
   ): Promise<{ token: string; user: Partial<User> }> {
@@ -96,13 +153,15 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    // Generate JWT token
+    // Generate JWT token with jti for replay attack prevention
+    const jti = uuidv4();
     const payload = {
       sub: user.id,
       email: user.email,
       username: user.username,
+      jti,
     };
-    const token = this.jwtService.sign(payload);
+    const token = this.jwtService.sign(payload, { expiresIn: "15m" });
 
     return {
       token,
@@ -111,12 +170,21 @@ export class AuthService {
         email: user.email,
         username: user.username,
         role: user.role,
+        referralCode: user.referralCode,
       },
     };
   }
 
   async validateUser(userId: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { id: userId } });
+  }
+
+  /**
+   * Logout: blacklist the token's jti so it cannot be reused.
+   * The caller must pass the decoded jti and exp from the current token.
+   */
+  logout(jti: string, exp: number): void {
+    this.tokenBlacklist.revoke(jti, exp * 1000); // exp is in seconds, convert to ms
   }
 
   async getAuthStatus(
@@ -129,6 +197,7 @@ export class AuthService {
         email: user.email,
         username: user.username,
         role: user.role,
+        referralCode: user.referralCode,
       },
     };
   }

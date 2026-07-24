@@ -1,5 +1,11 @@
 import { registerAs } from "@nestjs/config";
-import { Environment } from "./env.validation";
+
+enum Environment {
+  Development = "development",
+  Production = "production",
+  Staging = "staging",
+  Test = "test",
+}
 import {
   AppConfig,
   DatabaseConfig,

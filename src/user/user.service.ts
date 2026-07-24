@@ -1,9 +1,20 @@
-import { Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "./entities/user.entity";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
+import { UserRole } from "./entities/user.entity";
+import { createSpan } from "src/config/tracing";
+
+/** Pairs of roles that are mutually exclusive */
+const CONFLICTING_ROLE_PAIRS: [UserRole, UserRole][] = [
+  [UserRole.GOVERNANCE_OPERATOR, UserRole.KYC_OPERATOR],
+];
 
 @Injectable()
 export class UserService {
@@ -31,5 +42,64 @@ export class UserService {
 
   remove(id: string) {
     return this.userRepository.delete(id);
+  }
+
+  /**
+   * Assign a role to a user. Enforces mutual exclusion between
+   * GOVERNANCE_OPERATOR and KYC_OPERATOR — assigning one while the
+   * other is already held throws a BadRequestException.
+   */
+  async assignRole(userId: string, newRole: UserRole): Promise<User> {
+    // Example of manual span creation with OpenTelemetry
+    return createSpan(
+      "user.assign-role",
+      async (span) => {
+        span.setAttribute("user.id", userId);
+        span.setAttribute("user.role.new", newRole);
+
+        const user = await this.findOne(userId);
+        if (!user) {
+          throw new NotFoundException(`User ${userId} not found`);
+        }
+
+        // Child span for role validation
+        return createSpan(
+          "user.validate-role-conflict",
+          async (childSpan) => {
+            childSpan.setAttribute("user.role.current", user.role);
+            this.assertNoRoleConflict(user.role, newRole);
+
+            user.role = newRole;
+            const savedUser = await this.userRepository.save(user);
+
+            span.setAttribute("success", true);
+            return savedUser;
+          },
+          { "validation.type": "role-conflict" },
+        );
+      },
+      { module: "user-service", operation: "role-assignment" },
+    );
+  }
+
+  /**
+   * Throws BadRequestException if assigning `newRole` to a user that
+   * currently holds `currentRole` would create a conflicting pair.
+   */
+  assertNoRoleConflict(currentRole: UserRole, newRole: UserRole): void {
+    if (currentRole === newRole) return;
+
+    const conflict = CONFLICTING_ROLE_PAIRS.some(
+      ([a, b]) =>
+        (currentRole === a && newRole === b) ||
+        (currentRole === b && newRole === a),
+    );
+
+    if (conflict) {
+      throw new BadRequestException(
+        `Role conflict: a user cannot hold both "${currentRole}" and "${newRole}". ` +
+          `GOVERNANCE_OPERATOR and KYC_OPERATOR are mutually exclusive roles.`,
+      );
+    }
   }
 }

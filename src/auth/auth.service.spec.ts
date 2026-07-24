@@ -2,7 +2,8 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { AuthService } from "./auth.service";
 import { JwtService } from "@nestjs/jwt";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { User, UserRole } from "../user/entities/user.entity";
+import { User, UserRole } from "src/user/entities/user.entity";
+import { TokenBlacklistService } from "./token-blacklist.service";
 import { Repository } from "typeorm";
 import {
   ConflictException,
@@ -23,7 +24,7 @@ describe("AuthService", () => {
   let jwtService: JwtService;
   let userRepository: Repository<User>;
 
-  const mockUser: User = {
+  const mockUser = {
     id: "123",
     username: "testuser",
     walletAddress: "email_test@example.com",
@@ -45,6 +46,13 @@ describe("AuthService", () => {
     create: jest.fn(),
   };
 
+  const mockTokenBlacklistService = {
+    revoke: jest.fn(),
+    isRevoked: jest.fn(),
+    blacklistToken: jest.fn(),
+    isBlacklisted: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -56,6 +64,10 @@ describe("AuthService", () => {
         {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
+        },
+        {
+          provide: TokenBlacklistService,
+          useValue: mockTokenBlacklistService,
         },
       ],
     }).compile();

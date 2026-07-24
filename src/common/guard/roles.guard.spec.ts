@@ -1,7 +1,12 @@
-import { ExecutionContext, ForbiddenException } from "@nestjs/common";
+import {
+  ExecutionContext,
+  ForbiddenException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { RolesGuard } from "./roles.guard";
-import { Role, ROLES_KEY } from "../decorators/roles.decorator";
+import { ROLES_KEY } from "./roles.decorator";
+import { Role } from "./roles.enum";
 
 describe("RolesGuard", () => {
   let guard: RolesGuard;
@@ -84,12 +89,12 @@ describe("RolesGuard", () => {
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
     });
 
-    it("should throw ForbiddenException when no user is present on request", () => {
+    it("should throw UnauthorizedException when no user is present on request", () => {
       jest.spyOn(reflector, "getAllAndOverride").mockReturnValue([Role.ADMIN]);
       const context = createMockContext(undefined);
-      expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+      expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
       expect(() => guard.canActivate(context)).toThrow(
-        "No authenticated user found",
+        "No authenticated user found on request",
       );
     });
 

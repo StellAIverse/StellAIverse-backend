@@ -9,7 +9,14 @@ import {
   Param,
   Query,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth, ApiProperty } from "@nestjs/swagger";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiBearerAuth,
+  ApiProperty,
+} from "@nestjs/swagger";
 import { ChallengeService } from "./challenge.service";
 import { WalletAuthService } from "./wallet-auth.service";
 import { EmailLinkingService } from "./email-linking.service";
@@ -26,14 +33,16 @@ import { LinkWalletDto } from "./dto/link-wallet.dto";
 import { UnlinkWalletDto } from "./dto/unlink-wallet.dto";
 import { RecoverWalletDto } from "./dto/recover-wallet.dto";
 import { Throttle } from "@nestjs/throttler";
+import { SensitiveRateLimit } from "../common/decorators/rate-limit.decorator";
 import { Roles, Role } from "../common/decorators/roles.decorator";
 import { RolesGuard } from "../common/guard/roles.guard";
+import { Public } from "../common/decorators/public.decorator";
 
 export class RequestChallengeDto {
   @ApiProperty({
     description: "Ethereum wallet address",
     example: "0x1234567890abcdef1234567890abcdef1234567890",
-    pattern: "^0x[a-fA-F0-9]{40}$"
+    pattern: "^0x[a-fA-F0-9]{40}$",
   })
   address: string;
 }
@@ -41,17 +50,21 @@ export class RequestChallengeDto {
 export class VerifySignatureDto {
   @ApiProperty({
     description: "Challenge message to sign",
-    example: "Sign this message to authenticate with StellAIverse at 2024-02-25T05:30:00.000Z"
+    example:
+      "Sign this message to authenticate with StellAIverse at 2024-02-25T05:30:00.000Z",
   })
   message: string;
 
   @ApiProperty({
     description: "ECDSA signature of the challenge message",
-    example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+    example:
+      "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
   })
   signature: string;
 }
 
+// Auth endpoints are high-value targets — enforce strict per-user/IP limit: 5 req/min
+@SensitiveRateLimit("auth")
 @ApiTags("Authentication")
 @Throttle({ default: { ttl: 60000, limit: 10 } })
 @Controller("auth")
@@ -66,11 +79,13 @@ export class AuthController {
     private readonly delegationService: DelegationService,
   ) {}
 
+  @Public()
   @Post("challenge")
   @ApiOperation({
     summary: "Request Authentication Challenge",
-    description: "Request a challenge message to sign for wallet authentication",
-    operationId: "requestChallenge"
+    description:
+      "Request a challenge message to sign for wallet authentication",
+    operationId: "requestChallenge",
   })
   @ApiBody({ type: RequestChallengeDto })
   @ApiResponse({
@@ -81,22 +96,23 @@ export class AuthController {
       properties: {
         message: {
           type: "string",
-          example: "Sign this message to authenticate with StellAIverse at 2024-02-25T05:30:00.000Z"
+          example:
+            "Sign this message to authenticate with StellAIverse at 2024-02-25T05:30:00.000Z",
         },
         address: {
           type: "string",
-          example: "0x1234567890abcdef1234567890abcdef1234567890"
-        }
-      }
-    }
+          example: "0x1234567890abcdef1234567890abcdef1234567890",
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
-    description: "Invalid wallet address format"
+    description: "Invalid wallet address format",
   })
   @ApiResponse({
     status: 429,
-    description: "Too many requests"
+    description: "Too many requests",
   })
   requestChallenge(@Body() dto: RequestChallengeDto) {
     const message = this.challengeService.issueChallengeForAddress(dto.address);
@@ -106,8 +122,15 @@ export class AuthController {
     };
   }
 
+  @Public()
+  @Post("test-error")
+  async testError() {
+    throw new Error("Sentry integration test error");
+  }
+
   // Wallet Authentication Endpoints
 
+  @Public()
   @Post("verify")
   async verifySignature(@Body() dto: VerifySignatureDto) {
     const result = await this.walletAuthService.verifySignatureAndIssueToken(
@@ -132,6 +155,7 @@ export class AuthController {
     );
   }
 
+  @Public()
   @Post("verify-email")
   async verifyEmail(@Body() dto: VerifyEmailDto) {
     return this.emailLinkingService.verifyEmailAndLink(dto.token);
@@ -153,11 +177,13 @@ export class AuthController {
 
   // Recovery Endpoints
 
+  @Public()
   @Post("recovery/request")
   async requestRecovery(@Body() dto: RequestRecoveryDto) {
     return this.recoveryService.requestRecovery(dto.email);
   }
 
+  @Public()
   @Post("recovery/verify")
   async verifyRecovery(@Body() dto: RequestRecoveryDto) {
     return this.recoveryService.verifyRecoveryAndGetChallenge(dto.email);
@@ -176,7 +202,7 @@ export class AuthController {
       dto.message,
       dto.signature,
       dto.walletName,
-      { ip: req.ip, userAgent: req.headers['user-agent'] },
+      { ip: req.ip, userAgent: req.headers["user-agent"] },
     );
   }
 
@@ -185,10 +211,7 @@ export class AuthController {
   @Post("unlink-wallet")
   async unlinkWallet(@Request() req, @Body() dto: UnlinkWalletDto) {
     const userId = req.user.sub || req.user.id;
-    return this.walletAuthService.unlinkWallet(
-      userId,
-      dto.walletId,
-    );
+    return this.walletAuthService.unlinkWallet(userId, dto.walletId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -200,18 +223,19 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get("wallets/:walletId")
-  async getWallet(@Param('walletId') walletId: string, @Request() req) {
+  async getWallet(@Param("walletId") walletId: string, @Request() req) {
     const userId = req.user.sub || req.user.id;
     return this.walletAuthService.getWallet(walletId, userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post("wallets/:walletId/set-primary")
-  async setPrimaryWallet(@Param('walletId') walletId: string, @Request() req) {
+  async setPrimaryWallet(@Param("walletId") walletId: string, @Request() req) {
     const userId = req.user.sub || req.user.id;
     return this.walletAuthService.setPrimaryWallet(walletId, userId);
   }
 
+  @Public()
   @Throttle({ default: { ttl: 60000, limit: 3 } })
   @Post("recover-wallet")
   async recoverWallet(@Body() dto: RecoverWalletDto) {
@@ -220,6 +244,7 @@ export class AuthController {
 
   // Advanced Session Recovery Endpoints
 
+  @Public()
   @Throttle({ default: { ttl: 60000, limit: 3 } })
   @Post("recovery/backup-code/initiate")
   async initiateBackupCodeRecovery(
@@ -229,22 +254,21 @@ export class AuthController {
     return this.sessionRecoveryService.initiateBackupCodeRecovery(
       dto.walletAddress,
       dto.backupCode,
-      { ip: req.ip, userAgent: req.headers['user-agent'] },
+      { ip: req.ip, userAgent: req.headers["user-agent"] },
     );
   }
 
+  @Public()
   @Throttle({ default: { ttl: 60000, limit: 3 } })
   @Post("recovery/email/initiate")
-  async initiateEmailRecovery(
-    @Body() dto: { email: string },
-    @Request() req,
-  ) {
-    return this.sessionRecoveryService.initiateEmailRecovery(
-      dto.email,
-      { ip: req.ip, userAgent: req.headers['user-agent'] },
-    );
+  async initiateEmailRecovery(@Body() dto: { email: string }, @Request() req) {
+    return this.sessionRecoveryService.initiateEmailRecovery(dto.email, {
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
   }
 
+  @Public()
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post("recovery/email/verify")
   async verifyEmailRecoveryCode(
@@ -254,10 +278,11 @@ export class AuthController {
     return this.sessionRecoveryService.verifyEmailRecoveryCode(
       dto.sessionId,
       dto.code,
-      { ip: req.ip, userAgent: req.headers['user-agent'] },
+      { ip: req.ip, userAgent: req.headers["user-agent"] },
     );
   }
 
+  @Public()
   @Post("recovery/complete")
   async completeRecovery(
     @Body() dto: { sessionId: string; message: string; signature: string },
@@ -271,19 +296,19 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get("recovery/status/:walletId")
-  async getRecoveryStatus(@Param('walletId') walletId: string, @Request() req) {
+  async getRecoveryStatus(@Param("walletId") walletId: string, @Request() req) {
     const userId = req.user.sub || req.user.id;
     return this.sessionRecoveryService.getRecoveryStatus(walletId, userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post("recovery/backup-code/generate")
-  async generateBackupCodes(
-    @Body() dto: { walletId: string },
-    @Request() req,
-  ) {
+  async generateBackupCodes(@Body() dto: { walletId: string }, @Request() req) {
     const userId = req.user.sub || req.user.id;
-    return this.sessionRecoveryService.generateBackupCodes(dto.walletId, userId);
+    return this.sessionRecoveryService.generateBackupCodes(
+      dto.walletId,
+      userId,
+    );
   }
 
   // Delegation Endpoints
@@ -292,7 +317,8 @@ export class AuthController {
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post("delegation/request")
   async requestDelegation(
-    @Body() dto: {
+    @Body()
+    dto: {
       delegatorWalletId: string;
       delegateAddress: string;
       permissions: DelegationPermission[];
@@ -309,7 +335,7 @@ export class AuthController {
         permissions: dto.permissions,
         expiresAt: new Date(dto.expiresAt),
       },
-      { ip: req.ip, userAgent: req.headers['user-agent'] },
+      { ip: req.ip, userAgent: req.headers["user-agent"] },
     );
   }
 
@@ -324,22 +350,21 @@ export class AuthController {
       userId,
       dto.delegateWalletId,
       dto.signature,
-      { ip: req.ip, userAgent: req.headers['user-agent'] },
+      { ip: req.ip, userAgent: req.headers["user-agent"] },
     );
   }
 
   @UseGuards(JwtAuthGuard)
   @Post("delegation/:delegationId/revoke")
   async revokeDelegation(
-    @Param('delegationId') delegationId: string,
+    @Param("delegationId") delegationId: string,
     @Request() req,
   ) {
     const userId = req.user.sub || req.user.id;
-    return this.delegationService.revokeDelegation(
-      userId,
-      delegationId,
-      { ip: req.ip, userAgent: req.headers['user-agent'] },
-    );
+    return this.delegationService.revokeDelegation(userId, delegationId, {
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
   }
 
   @UseGuards(JwtAuthGuard)
@@ -352,7 +377,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get("delegations/wallet/:walletId")
   async getWalletDelegations(
-    @Param('walletId') walletId: string,
+    @Param("walletId") walletId: string,
     @Request() req,
   ) {
     const userId = req.user.sub || req.user.id;
@@ -375,5 +400,41 @@ export class AuthController {
   async getStats() {
     // Example operator/admin endpoint
     return { message: "Stats access granted for admin/operator roles." };
+  }
+
+  // Traditional Auth Endpoints (Legacy — see AuthService deprecation notice)
+
+  @Public()
+  @Post("register")
+  @ApiOperation({ summary: "Register with email and password" })
+  async register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
+  }
+
+  @Public()
+  @Post("login")
+  @ApiOperation({ summary: "Login with email and password" })
+  async login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
+  }
+
+  @Post("logout")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Logout and invalidate current token" })
+  async logout(@Request() req) {
+    const { jti, exp } = req.user;
+    if (jti && exp) {
+      this.authService.logout(jti, exp);
+    }
+    return { message: "Logged out successfully" };
+  }
+
+  @Get("status")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Check authentication status" })
+  async getStatus(@Request() req) {
+    return this.authService.getAuthStatus(req.user);
   }
 }

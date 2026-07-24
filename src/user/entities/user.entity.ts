@@ -6,14 +6,26 @@ import {
   UpdateDateColumn,
   Index,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
-import { ProvenanceRecord } from "../../audit/entities/provenance-record.entity";
-import { Wallet } from "../../auth/entities/wallet.entity";
+import { ProvenanceRecord } from "src/audit/entities/provenance-record.entity";
+import { Wallet } from "src/auth/entities/wallet.entity";
 
 export enum UserRole {
   USER = "user",
   OPERATOR = "operator",
+  GOVERNANCE_OPERATOR = "governance_operator",
+  KYC_OPERATOR = "kyc_operator",
   ADMIN = "admin",
+}
+
+export enum KycStatus {
+  UNVERIFIED = "unverified",
+  PENDING = "pending",
+  IN_REVIEW = "in_review",
+  VERIFIED = "verified",
+  REJECTED = "rejected",
 }
 
 @Entity("users")
@@ -45,6 +57,18 @@ export class User {
   })
   role: UserRole;
 
+  @Column({
+    type: "varchar",
+    default: KycStatus.UNVERIFIED,
+  })
+  kycStatus: KycStatus;
+
+  @Column({ default: false })
+  isActive: boolean;
+
+  @Column({ type: "timestamp", nullable: true })
+  lastLoginAt: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -62,4 +86,22 @@ export class User {
    */
   @OneToMany(() => Wallet, (wallet) => wallet.user)
   wallets: Wallet[];
+
+  @Column({ unique: true, nullable: true })
+  @Index()
+  referralCode: string | null;
+
+  @Column({ nullable: true })
+  referredById: string | null;
+
+  @ManyToOne(() => User, (user) => user.referrals)
+  @JoinColumn({ name: "referredById" })
+  referredBy: User | null;
+
+  /**
+   * Wallets linked to this user account
+   */
+
+  @OneToMany(() => User, (user) => user.referredBy)
+  referrals: User[];
 }
