@@ -29,6 +29,7 @@ import { AlertsModule } from "./alerts/alerts.module";
 import { MetricsModule } from "./metrics/metrics.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { RateLimitModule } from "./quota/rate-limit.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 
 // Auth entities
 import { User } from "./user/entities/user.entity";
@@ -118,6 +119,10 @@ import { QuotaGuard } from "./common/guard/quota.guard";
             AlertDeliveryLog,
             AnalyticsEvent,
             DailyMetric,
+            // Notifications module entities
+            require('./notifications/entities/notification.entity').Notification,
+            require('./notifications/entities/notification-delivery-log.entity').NotificationDeliveryLog,
+            require('./notifications/entities/notification-preference.entity').NotificationPreference,
           ],
           synchronize: !isProduction,
           logging: isProduction ? ["error"] : ["error", "warn", "schema"],
@@ -154,6 +159,7 @@ import { QuotaGuard } from "./common/guard/quota.guard";
     MetricsModule,
     AnalyticsModule,
     RateLimitModule,
+    NotificationsModule,
   ],
 
   controllers: [AppController],
