@@ -29,6 +29,7 @@ import { AlertsModule } from "./alerts/alerts.module";
 import { MetricsModule } from "./metrics/metrics.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { RateLimitModule } from "./quota/rate-limit.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 import { MessagingModule } from "./messaging/messaging.module";
 
 // Auth entities
@@ -64,6 +65,11 @@ import { AlertDeliveryLog } from "./alerts/entities/alert-delivery-log.entity";
 // Analytics entities
 import { AnalyticsEvent } from "./analytics/entities/analytics-event.entity";
 import { DailyMetric } from "./analytics/entities/daily-metric.entity";
+
+// Notifications entities
+import { Notification } from "./notifications/entities/notification.entity";
+import { NotificationDeliveryLog } from "./notifications/entities/notification-delivery-log.entity";
+import { NotificationPreference } from "./notifications/entities/notification-preference.entity";
 
 // Guards
 import { ThrottlerUserIpGuard } from "./common/guard/throttler.guard";
@@ -122,6 +128,10 @@ import { QuotaGuard } from "./common/guard/quota.guard";
             AlertDeliveryLog,
             AnalyticsEvent,
             DailyMetric,
+            // Notifications module entities
+            Notification,
+            NotificationDeliveryLog,
+            NotificationPreference,
             Conversation,
             Message,
             UserPresence,
@@ -161,6 +171,7 @@ import { QuotaGuard } from "./common/guard/quota.guard";
     MetricsModule,
     AnalyticsModule,
     RateLimitModule,
+    NotificationsModule,
     MessagingModule,
   ],
 
