@@ -18,6 +18,8 @@ import { JwtAuthGuard } from "src/auth/guards/jwt-auth.guard";
 import { CurrentUser } from "src/auth/decorators/current-user.decorator";
 import { User, UserRole } from "./entities/user.entity";
 import { FileInterceptor } from "@nestjs/platform-express";
+import "multer"; // Import multer to make sure the types are loaded
+import { Express } from "express";
 
 @Controller("user")
 @UseGuards(JwtAuthGuard)

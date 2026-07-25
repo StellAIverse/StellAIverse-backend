@@ -16,4 +16,8 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsOptional()
   @IsObject()
   preferences?: Record<string, any>;
+
+  @IsOptional()
+  @IsString()
+  avatar?: string | null;
 }

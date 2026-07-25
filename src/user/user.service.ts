@@ -13,6 +13,8 @@ import { createSpan } from "src/config/tracing";
 import { S3 } from "aws-sdk";
 import { ConfigService } from "@nestjs/config";
 import { v4 as uuid } from "uuid";
+import "multer";
+import { Express } from "express";
 
 /** Pairs of roles that are mutually exclusive */
 const CONFLICTING_ROLE_PAIRS: [UserRole, UserRole][] = [
