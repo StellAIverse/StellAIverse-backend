@@ -10,6 +10,11 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { UserRole } from "./entities/user.entity";
 import { createSpan } from "src/config/tracing";
+import { S3 } from "aws-sdk";
+import { ConfigService } from "@nestjs/config";
+import { v4 as uuid } from "uuid";
+import "multer";
+import { Express } from "express";
 
 /** Pairs of roles that are mutually exclusive */
 const CONFLICTING_ROLE_PAIRS: [UserRole, UserRole][] = [
@@ -21,6 +26,7 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly configService: ConfigService,
   ) {}
 
   create(createUserDto: CreateUserDto) {
@@ -42,6 +48,52 @@ export class UserService {
 
   remove(id: string) {
     return this.userRepository.delete(id);
+  }
+
+  async uploadAvatar(id: string, file: Express.Multer.File) {
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    const s3 = new S3();
+    const uploadResult = await s3
+      .upload({
+        Bucket: this.configService.get("AWS_S3_BUCKET_NAME"),
+        Body: file.buffer,
+        Key: `${uuid()}-${file.originalname}`,
+      })
+      .promise();
+
+    await this.update(id, { avatar: uploadResult.Location });
+
+    return {
+      ...user,
+      avatar: uploadResult.Location,
+    };
+  }
+
+  async deleteAvatar(id: string) {
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    const s3 = new S3();
+    if (user.avatar) {
+      await s3
+        .deleteObject({
+          Bucket: this.configService.get("AWS_S3_BUCKET_NAME"),
+          Key: user.avatar.split("/").pop(),
+        })
+        .promise();
+      await this.update(id, { avatar: null });
+    }
+
+    return {
+      ...user,
+      avatar: null,
+    };
   }
 
   /**

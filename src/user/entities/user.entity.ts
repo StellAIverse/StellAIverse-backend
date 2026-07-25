@@ -51,6 +51,18 @@ export class User {
   @Column({ default: false })
   emailVerified: boolean;
 
+  @Column({ nullable: true })
+  displayName: string | null;
+
+  @Column({ type: "text", nullable: true })
+  bio: string | null;
+
+  @Column({ nullable: true })
+  avatar: string | null;
+
+  @Column({ type: "jsonb", nullable: true, default: {} })
+  preferences: Record<string, any> | null;
+
   @Column({
     type: "varchar",
     default: UserRole.USER,
