@@ -31,6 +31,7 @@ import { AnalyticsModule } from "./analytics/analytics.module";
 import { RateLimitModule } from "./quota/rate-limit.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { MessagingModule } from "./messaging/messaging.module";
+import { PaymentsModule } from "./payments/payments.module";
 
 // Auth entities
 import { Conversation } from "./messaging/entities/conversation.entity";
@@ -72,6 +73,12 @@ import { DailyMetric } from "./analytics/entities/daily-metric.entity";
 import { Notification } from "./notifications/entities/notification.entity";
 import { NotificationDeliveryLog } from "./notifications/entities/notification-delivery-log.entity";
 import { NotificationPreference } from "./notifications/entities/notification-preference.entity";
+
+// Payments entities
+import { PaymentCustomer } from "./payments/entities/payment-customer.entity";
+import { Subscription } from "./payments/entities/subscription.entity";
+import { Transaction } from "./payments/entities/transaction.entity";
+import { WebhookEvent } from "./payments/entities/webhook-event.entity";
 
 // Guards
 import { ThrottlerUserIpGuard } from "./common/guard/throttler.guard";
@@ -137,6 +144,11 @@ import { QuotaGuard } from "./common/guard/quota.guard";
             Conversation,
             Message,
             UserPresence,
+            // Payments module entities
+            PaymentCustomer,
+            Subscription,
+            Transaction,
+            WebhookEvent,
           ],
           synchronize: !isProduction,
           logging: isProduction ? ["error"] : ["error", "warn", "schema"],
@@ -176,6 +188,7 @@ import { QuotaGuard } from "./common/guard/quota.guard";
     RateLimitModule,
     NotificationsModule,
     MessagingModule,
+    PaymentsModule,
   ],
 
   controllers: [AppController],

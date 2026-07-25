@@ -21,7 +21,9 @@ async function bootstrap() {
   }
 
   // Create app with appropriate logging
-  const app = await NestFactory.create(AppModule);
+  // rawBody is required so the payments webhook controller can verify
+  // Stripe signatures against the exact bytes Stripe signed
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const configService = app.get(ConfigService);
   const nodeEnv = configService.get<string>("NODE_ENV");
   const isProduction = nodeEnv === "production";
