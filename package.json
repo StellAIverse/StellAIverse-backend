@@ -69,6 +69,7 @@
     "@types/qrcode": "1.5.6",
     "@types/speakeasy": "2.0.10",
     "@willsoto/nestjs-prometheus": "^6.0.2",
+    "aws-sdk": "^2.1582.0",
     "axios": "^1.13.4",
     "bcrypt": "^6.0.0",
     "bull": "^4.16.5",
