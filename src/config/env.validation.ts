@@ -104,6 +104,15 @@ export class EnvironmentVariables {
 
   @IsString()
   EMAIL_FROM: string = '"StellAIverse" <noreply@stellaiverse.com>';
+
+  // Stripe / Payments
+  @IsOptional()
+  @IsString()
+  STRIPE_SECRET_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  STRIPE_WEBHOOK_SECRET?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
