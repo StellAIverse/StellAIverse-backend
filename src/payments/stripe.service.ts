@@ -34,6 +34,19 @@ export class StripeService implements OnModuleInit {
     });
   }
 
+  createPaymentIntent(
+    params: Stripe.PaymentIntentCreateParams,
+    options?: Stripe.RequestOptions,
+  ): Promise<Stripe.PaymentIntent> {
+    return this.client.paymentIntents.create(params, options);
+  }
+
+  createCheckoutSession(
+    params: Stripe.Checkout.SessionCreateParams,
+  ): Promise<Stripe.Checkout.Session> {
+    return this.client.checkout.sessions.create(params);
+  }
+
   createSubscription(
     params: Stripe.SubscriptionCreateParams,
   ): Promise<Stripe.Subscription> {

@@ -29,6 +29,11 @@ All endpoints below (except the webhook) require a valid JWT and act on the
 authenticated user.
 
 - `POST /payments/customer` - create/update the caller's Stripe customer
+- `POST /payments/payment-intents` - create a payment intent for a one-off
+  charge; returns the `clientSecret` for the frontend to confirm. Accepts an
+  optional `idempotencyKey` so retried submissions never double-charge.
+- `POST /payments/checkout` - create a Stripe Checkout session (`subscription`
+  or `payment` mode) and return its hosted-checkout `url`
 - `POST /payments/subscriptions` - start a subscription for a given price
 - `GET /payments/subscriptions` - list the caller's subscriptions
 - `PATCH /payments/subscriptions/:id` - change a subscription's plan
