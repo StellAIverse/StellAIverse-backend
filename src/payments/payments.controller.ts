@@ -17,6 +17,8 @@ import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { CreateSubscriptionDto } from "./dto/create-subscription.dto";
 import { UpdateSubscriptionDto } from "./dto/update-subscription.dto";
 import { CancelSubscriptionDto } from "./dto/cancel-subscription.dto";
+import { CreatePaymentIntentDto } from "./dto/create-payment-intent.dto";
+import { CreateCheckoutSessionDto } from "./dto/create-checkout-session.dto";
 
 @ApiTags("payments")
 @ApiBearerAuth()
@@ -34,6 +36,28 @@ export class PaymentsController {
     @Body() dto: CreateCustomerDto,
   ) {
     return this.paymentsService.getOrCreateCustomer(user.id, dto);
+  }
+
+  @Post("payment-intents")
+  @ApiOperation({
+    summary: "Create a Stripe payment intent for a one-off charge",
+  })
+  createPaymentIntent(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: CreatePaymentIntentDto,
+  ) {
+    return this.paymentsService.createPaymentIntent(user.id, dto);
+  }
+
+  @Post("checkout")
+  @ApiOperation({
+    summary: "Create a Stripe Checkout session and return its redirect URL",
+  })
+  createCheckoutSession(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: CreateCheckoutSessionDto,
+  ) {
+    return this.paymentsService.createCheckoutSession(user.id, dto);
   }
 
   @Post("subscriptions")

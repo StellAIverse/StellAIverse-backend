@@ -17,6 +17,8 @@ import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { CreateSubscriptionDto } from "./dto/create-subscription.dto";
 import { UpdateSubscriptionDto } from "./dto/update-subscription.dto";
 import { CancelSubscriptionDto } from "./dto/cancel-subscription.dto";
+import { CreatePaymentIntentDto } from "./dto/create-payment-intent.dto";
+import { CreateCheckoutSessionDto } from "./dto/create-checkout-session.dto";
 
 const STRIPE_TO_INTERNAL_STATUS: Record<string, SubscriptionStatus> = {
   incomplete: SubscriptionStatus.INCOMPLETE,
@@ -73,6 +75,65 @@ export class PaymentsService {
     });
 
     return this.customerRepo.save(customer);
+  }
+
+  async createPaymentIntent(
+    userId: string,
+    dto: CreatePaymentIntentDto,
+  ): Promise<{
+    paymentIntentId: string;
+    clientSecret: string | null;
+    status: string;
+  }> {
+    const customer = await this.getOrCreateCustomer(userId, {
+      paymentMethodId: dto.paymentMethodId,
+    });
+
+    const params: Stripe.PaymentIntentCreateParams = {
+      amount: dto.amount,
+      currency: dto.currency ?? "usd",
+      customer: customer.stripeCustomerId,
+      description: dto.description,
+      metadata: { userId },
+    };
+    if (dto.paymentMethodId) {
+      params.payment_method = dto.paymentMethodId;
+    }
+
+    // A client-supplied idempotency key makes a retried submission return the
+    // original payment intent instead of charging the customer twice.
+    const options: Stripe.RequestOptions | undefined = dto.idempotencyKey
+      ? { idempotencyKey: dto.idempotencyKey }
+      : undefined;
+
+    const intent = await this.stripeService.createPaymentIntent(
+      params,
+      options,
+    );
+
+    return {
+      paymentIntentId: intent.id,
+      clientSecret: intent.client_secret,
+      status: intent.status,
+    };
+  }
+
+  async createCheckoutSession(
+    userId: string,
+    dto: CreateCheckoutSessionDto,
+  ): Promise<{ id: string; url: string | null }> {
+    const customer = await this.getOrCreateCustomer(userId);
+
+    const session = await this.stripeService.createCheckoutSession({
+      mode: dto.mode ?? "subscription",
+      customer: customer.stripeCustomerId,
+      line_items: [{ price: dto.priceId, quantity: dto.quantity ?? 1 }],
+      success_url: dto.successUrl,
+      cancel_url: dto.cancelUrl,
+      metadata: { userId },
+    });
+
+    return { id: session.id, url: session.url };
   }
 
   async createSubscription(
