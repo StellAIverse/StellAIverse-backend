@@ -53,6 +53,42 @@ export class AppController {
   }
 
   @Public()
+  @Get("health/live")
+  @HealthCheck()
+  @ApiOperation({
+    summary: "Liveness Probe",
+    description:
+      "Orchestrator liveness probe. Returns 200 while the process is up and " +
+      "able to serve requests. It performs no dependency checks, so a transient " +
+      "downstream outage does not cause the pod to be restarted.",
+    operationId: "getLiveness",
+  })
+  @ApiResponse({ status: 200, description: "Process is alive" })
+  checkLiveness() {
+    // No indicators: a passing response simply means the event loop is
+    // responsive and the app can serve HTTP — the correct semantics for
+    // Kubernetes `livenessProbe`.
+    return this.health.check([]);
+  }
+
+  @Public()
+  @Get("health/ready")
+  @HealthCheck()
+  @ApiOperation({
+    summary: "Readiness Probe",
+    description:
+      "Orchestrator readiness probe. Returns 200 only when the service and its " +
+      "critical dependencies are ready to receive traffic; the orchestrator " +
+      "routes traffic to the pod only while this check passes.",
+    operationId: "getReadiness",
+  })
+  @ApiResponse({ status: 200, description: "Service is ready for traffic" })
+  @ApiResponse({ status: 503, description: "Service is not ready" })
+  checkReadiness() {
+    return this.health.check([() => this.riskManagementHealth.isHealthy()]);
+  }
+
+  @Public()
   @Get("info")
   @RateLimit({ level: "standard" }) // Default standard level
   @ApiOperation({
