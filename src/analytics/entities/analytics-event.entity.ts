@@ -75,6 +75,10 @@ export class AnalyticsEvent {
   @Column({ type: "boolean", default: false })
   optedOut: boolean;
 
+  @Column({ type: "varchar", length: 255, nullable: true })
+  @Index({ unique: true })
+  idempotencyKey: string;
+
   @CreateDateColumn()
   createdAt: Date;
 }

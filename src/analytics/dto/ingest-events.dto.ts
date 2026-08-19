@@ -37,6 +37,11 @@ export class IngestEventDto {
   @IsString()
   @IsOptional()
   timestamp?: string;
+
+  @ApiPropertyOptional({ description: "Idempotency key for deduplication" })
+  @IsString()
+  @IsOptional()
+  idempotencyKey?: string;
 }
 
 export class BatchIngestEventsDto {
