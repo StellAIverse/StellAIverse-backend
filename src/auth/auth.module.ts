@@ -21,6 +21,7 @@ import { AuthStrategiesModule } from "./auth-strategies.module";
 
 import { AuthController } from "./auth.controller";
 import { EnhancedAuthController } from "./enhanced-auth.controller";
+import { JwtAuthController } from "./jwt-auth.controller";
 
 import { ChallengeService } from "./challenge.service";
 import { WalletAuthService } from "./wallet-auth.service";
@@ -30,11 +31,17 @@ import { RecoveryService } from "./recovery.service";
 import { SessionRecoveryService } from "./session-recovery.service";
 import { DelegationService } from "./delegation.service";
 import { EnhancedAuthService } from "./enhanced-auth.service";
+import { LoginAttemptService } from "./login-attempt.service";
 
 import { User } from "src/user/entities/user.entity";
 import { EmailVerification } from "./entities/email-verification.entity";
 import { Wallet } from "./entities/wallet.entity";
-import { RefreshToken, TwoFactorAuth, PasswordResetToken } from "./entities/auth.entity";
+import {
+  RefreshToken,
+  TwoFactorAuth,
+  PasswordResetToken,
+  LoginAttempt,
+} from "./entities/auth.entity";
 
 @Module({
   imports: [
@@ -48,9 +55,10 @@ import { RefreshToken, TwoFactorAuth, PasswordResetToken } from "./entities/auth
       RefreshToken,
       TwoFactorAuth,
       PasswordResetToken,
+      LoginAttempt,
     ]),
   ],
-  controllers: [AuthController, EnhancedAuthController],
+  controllers: [AuthController, EnhancedAuthController, JwtAuthController],
   providers: [
     ChallengeService,
     WalletAuthService,
@@ -60,6 +68,7 @@ import { RefreshToken, TwoFactorAuth, PasswordResetToken } from "./entities/auth
     SessionRecoveryService,
     DelegationService,
     EnhancedAuthService,
+    LoginAttemptService,
   ],
   exports: [
     // Re-export sub-modules so any module importing AuthModule gets everything.
@@ -72,6 +81,7 @@ import { RefreshToken, TwoFactorAuth, PasswordResetToken } from "./entities/auth
     SessionRecoveryService,
     DelegationService,
     EnhancedAuthService,
+    LoginAttemptService,
   ],
 })
 export class AuthModule {}
