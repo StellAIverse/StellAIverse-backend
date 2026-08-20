@@ -11,6 +11,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { TerminusModule } from "@nestjs/terminus";
 import { EventEmitterModule } from "@nestjs/event-emitter";
+import { ScheduleModule } from "@nestjs/schedule";
 
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
@@ -98,6 +99,7 @@ import { QuotaGuard } from "./common/guard/quota.guard";
     }),
 
     EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
 
     // ✅ ONLY ONE TypeORM CONFIG (Async)
     TypeOrmModule.forRootAsync({

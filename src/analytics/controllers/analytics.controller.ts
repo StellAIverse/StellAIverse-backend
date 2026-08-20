@@ -106,6 +106,41 @@ export class AnalyticsController {
     );
   }
 
+  @Get("metrics/top-events")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get top events by frequency" })
+  @ApiQuery({ name: "startDate", required: true, type: String })
+  @ApiQuery({ name: "endDate", required: true, type: String })
+  @ApiQuery({ name: "limit", required: false, type: Number })
+  async getTopEvents(
+    @Query("startDate") startDate: string,
+    @Query("endDate") endDate: string,
+    @Query("limit") limit?: number,
+  ) {
+    return this.analyticsService.getTopEvents(
+      new Date(startDate),
+      new Date(endDate),
+      limit ? Number(limit) : 10,
+    );
+  }
+
+  @Get("metrics/retention")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get retention cohorts" })
+  @ApiQuery({ name: "startDate", required: true, type: String })
+  @ApiQuery({ name: "endDate", required: true, type: String })
+  async getRetentionCohorts(
+    @Query("startDate") startDate: string,
+    @Query("endDate") endDate: string,
+  ) {
+    return this.analyticsService.getRetentionCohorts(
+      new Date(startDate),
+      new Date(endDate),
+    );
+  }
+
   @Get("metrics/summary")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

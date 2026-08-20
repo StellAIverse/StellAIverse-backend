@@ -44,7 +44,18 @@ export class AnalyticsService {
       optedOut: false,
     });
 
-    return this.eventRepository.save(event);
+    const result = await this.eventRepository
+      .createQueryBuilder()
+      .insert()
+      .into(AnalyticsEvent)
+      .values(event)
+      .orIgnore()
+      .execute();
+
+    if (result.identifiers && result.identifiers.length > 0) {
+      event.id = result.identifiers[0].id;
+    }
+    return event;
   }
 
   /**
@@ -62,6 +73,10 @@ export class AnalyticsService {
       os?: string;
     },
   ): Promise<{ accepted: number; rejected: number }> {
+    if (!dto.events.length) {
+      return { accepted: 0, rejected: 0 };
+    }
+
     const events = dto.events.map((eventDto) =>
       this.eventRepository.create({
         ...eventDto,
@@ -77,9 +92,20 @@ export class AnalyticsService {
       }),
     );
 
-    const result = await this.eventRepository.save(events);
-    this.logger.log(`Batch ingested ${result.length} events`);
-    return { accepted: result.length, rejected: 0 };
+    const result = await this.eventRepository
+      .createQueryBuilder()
+      .insert()
+      .into(AnalyticsEvent)
+      .values(events)
+      .orIgnore()
+      .execute();
+      
+    // result.identifiers might not match input length if duplicates were ignored
+    const acceptedCount = result.identifiers?.length || 0;
+    const rejectedCount = events.length - acceptedCount;
+
+    this.logger.log(`Batch ingested ${acceptedCount} events, rejected ${rejectedCount} duplicates`);
+    return { accepted: acceptedCount, rejected: rejectedCount };
   }
 
   /**
@@ -155,6 +181,100 @@ export class AnalyticsService {
     }
 
     return results;
+  }
+
+  /**
+   * Get top events by frequency
+   */
+  async getTopEvents(startDate: Date, endDate: Date, limit: number = 10): Promise<{ eventName: string; count: number }[]> {
+    const result = await this.eventRepository
+      .createQueryBuilder("event")
+      .select("event.eventName", "eventName")
+      .addSelect("COUNT(*)", "count")
+      .where("event.createdAt BETWEEN :startDate AND :endDate", { startDate, endDate })
+      .andWhere("event.eventName IS NOT NULL")
+      .andWhere("event.optedOut = false")
+      .groupBy("event.eventName")
+      .orderBy("count", "DESC")
+      .limit(limit)
+      .getRawMany();
+
+    return result.map((r) => ({
+      eventName: r.eventName,
+      count: parseInt(r.count, 10),
+    }));
+  }
+
+  /**
+   * Get basic retention cohorts (by day)
+   */
+  async getRetentionCohorts(startDate: Date, endDate: Date): Promise<any[]> {
+    // This is a simplified retention query. In production with a huge DB, 
+    // it's better to precalculate this or use specific analytics DB like ClickHouse.
+    const query = `
+      WITH user_first_seen AS (
+        SELECT "userId", DATE("createdAt") AS first_day
+        FROM "analytics_events"
+        WHERE "userId" IS NOT NULL AND "optedOut" = false
+        GROUP BY "userId"
+      ),
+      retention_data AS (
+        SELECT 
+          u.first_day AS cohort_day,
+          DATE(e."createdAt") - u.first_day AS day_offset,
+          COUNT(DISTINCT e."userId") AS active_users
+        FROM user_first_seen u
+        JOIN "analytics_events" e ON u."userId" = e."userId" 
+        WHERE e."createdAt" BETWEEN $1 AND $2 
+          AND e."optedOut" = false
+        GROUP BY u.first_day, DATE(e."createdAt") - u.first_day
+      )
+      SELECT 
+        cohort_day,
+        day_offset,
+        active_users
+      FROM retention_data
+      WHERE day_offset >= 0
+      ORDER BY cohort_day ASC, day_offset ASC
+    `;
+
+    const result = await this.eventRepository.query(query, [startDate, endDate]);
+    
+    // Group by cohort_day
+    const cohorts: Record<string, { size: number; retention: Record<number, number> }> = {};
+    
+    result.forEach((row: any) => {
+      const cohortDay = new Date(row.cohort_day).toISOString().split('T')[0];
+      const offset = parseInt(row.day_offset, 10);
+      const count = parseInt(row.active_users, 10);
+      
+      if (!cohorts[cohortDay]) {
+        cohorts[cohortDay] = { size: 0, retention: {} };
+      }
+      
+      if (offset === 0) {
+        cohorts[cohortDay].size = count;
+      }
+      
+      cohorts[cohortDay].retention[offset] = count;
+    });
+
+    // Format output
+    return Object.keys(cohorts).map((day) => {
+      const cohort = cohorts[day];
+      const retentionRates: Record<number, number> = {};
+      
+      Object.keys(cohort.retention).forEach((offsetStr) => {
+        const offset = parseInt(offsetStr, 10);
+        retentionRates[offset] = Math.round((cohort.retention[offset] / cohort.size) * 10000) / 100;
+      });
+      
+      return {
+        cohortDay: day,
+        size: cohort.size,
+        retentionRates,
+      };
+    });
   }
 
   /**
