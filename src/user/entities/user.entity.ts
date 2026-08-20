@@ -81,6 +81,12 @@ export class User {
   @Column({ type: "timestamp", nullable: true })
   lastLoginAt: Date;
 
+  @Column({ default: 0 })
+  failedLoginAttempts: number;
+
+  @Column({ type: "timestamp", nullable: true })
+  lockedUntil: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 

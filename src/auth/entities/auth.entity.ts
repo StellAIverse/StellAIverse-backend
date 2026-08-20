@@ -132,3 +132,35 @@ export class PasswordResetToken {
   @CreateDateColumn()
   createdAt: Date;
 }
+
+@Entity("login_attempts")
+export class LoginAttempt {
+  @PrimaryGeneratedColumn("uuid")
+  id: string;
+
+  @Column({ type: "uuid", nullable: true })
+  @Index()
+  userId: string;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: "userId" })
+  user: User;
+
+  @Column({ nullable: true })
+  email: string;
+
+  @Column({ default: false })
+  success: boolean;
+
+  @Column({ nullable: true })
+  failureReason: string;
+
+  @Column()
+  ipAddress: string;
+
+  @Column({ nullable: true })
+  userAgent: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+}

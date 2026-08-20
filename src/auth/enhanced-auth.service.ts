@@ -14,6 +14,7 @@ import { JwtService } from "@nestjs/jwt";
 import * as speakeasy from "speakeasy";
 import * as qrcode from "qrcode";
 import { EmailService } from "./email.service";
+import { LoginAttemptService } from "./login-attempt.service";
 import { User } from "src/user/entities/user.entity";
 import {
   RefreshToken,
@@ -32,6 +33,7 @@ import {
 } from "./dto/auth.dto";
 import { TwoFactorSetupDto } from "./dto/kyc.dto";
 import { v4 as uuidv4 } from "uuid";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class EnhancedAuthService {
@@ -47,6 +49,8 @@ export class EnhancedAuthService {
     private readonly jwtService: JwtService,
     @Inject(forwardRef(() => EmailService))
     private readonly emailService: EmailService,
+    private readonly loginAttemptService: LoginAttemptService,
+    private readonly configService: ConfigService,
   ) {}
 
   async register(
@@ -123,47 +127,147 @@ export class EnhancedAuthService {
   }> {
     const { email, password } = loginDto;
 
-    // Find user by email
+    // Check if account is locked
     const user = await this.userRepository.findOne({ where: { email } });
-    if (!user) {
+    if (user && user.lockedUntil && user.lockedUntil > new Date()) {
+      const remainingTime = Math.ceil(
+        (user.lockedUntil.getTime() - Date.now()) / 60000,
+      );
+      await this.loginAttemptService.recordLoginAttempt(
+        user,
+        email,
+        false,
+        ipAddress,
+        userAgent,
+        "Account locked",
+      );
+      throw new UnauthorizedException(
+        `Account is temporarily locked. Try again in ${remainingTime} minutes.`,
+      );
+    }
+
+    // Find user by email
+    const foundUser = await this.userRepository.findOne({ where: { email } });
+    if (!foundUser) {
+      await this.loginAttemptService.recordLoginAttempt(
+        null,
+        email,
+        false,
+        ipAddress,
+        userAgent,
+        "User not found",
+      );
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    if (!user.isActive) {
+    if (!foundUser.isActive) {
+      await this.loginAttemptService.recordLoginAttempt(
+        foundUser,
+        email,
+        false,
+        ipAddress,
+        userAgent,
+        "Account deactivated",
+      );
       throw new UnauthorizedException("Account is deactivated");
     }
 
     // Check if user has a password (traditional auth user)
-    if (!user.password) {
+    if (!foundUser.password) {
+      await this.loginAttemptService.recordLoginAttempt(
+        foundUser,
+        email,
+        false,
+        ipAddress,
+        userAgent,
+        "Wallet auth only",
+      );
       throw new BadRequestException(
         "This account uses wallet authentication. Please use wallet login.",
       );
     }
 
     // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, foundUser.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException("Invalid credentials");
+      // Increment failed attempts
+      const maxAttempts =
+        this.configService.get<number>("AUTH_MAX_LOGIN_ATTEMPTS") || 5;
+      const lockoutDuration =
+        this.configService.get<number>("AUTH_LOCKOUT_DURATION_MINUTES") || 15;
+
+      const newFailedAttempts = (foundUser.failedLoginAttempts || 0) + 1;
+
+      if (newFailedAttempts >= maxAttempts) {
+        // Lock the account
+        const lockedUntil = new Date(Date.now() + lockoutDuration * 60 * 1000);
+        await this.userRepository.update(foundUser.id, {
+          failedLoginAttempts: newFailedAttempts,
+          lockedUntil,
+        });
+
+        await this.loginAttemptService.recordLoginAttempt(
+          foundUser,
+          email,
+          false,
+          ipAddress,
+          userAgent,
+          "Account locked due to too many failed attempts",
+        );
+
+        throw new UnauthorizedException(
+          `Too many failed login attempts. Account locked for ${lockoutDuration} minutes.`,
+        );
+      } else {
+        // Just increment failed attempts
+        await this.userRepository.update(foundUser.id, {
+          failedLoginAttempts: newFailedAttempts,
+        });
+
+        await this.loginAttemptService.recordLoginAttempt(
+          foundUser,
+          email,
+          false,
+          ipAddress,
+          userAgent,
+          "Invalid password",
+        );
+
+        throw new UnauthorizedException("Invalid credentials");
+      }
     }
 
-    // Update last login
-    await this.userRepository.update(user.id, { lastLoginAt: new Date() });
+    // Successful login - reset failed attempts
+    await this.userRepository.update(foundUser.id, {
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      lastLoginAt: new Date(),
+    });
+
+    // Record successful login attempt
+    await this.loginAttemptService.recordLoginAttempt(
+      foundUser,
+      email,
+      true,
+      ipAddress,
+      userAgent,
+    );
 
     // Generate tokens
-    const tokens = await this.generateTokens(user, ipAddress, userAgent);
+    const tokens = await this.generateTokens(foundUser, ipAddress, userAgent);
 
     // Check if 2FA is required
-    const twoFactorEnabled = await this.isTwoFactorEnabled(user.id);
+    const twoFactorEnabled = await this.isTwoFactorEnabled(foundUser.id);
 
     return {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        role: user.role,
-        kycStatus: user.kycStatus,
+        id: foundUser.id,
+        email: foundUser.email,
+        username: foundUser.username,
+        role: foundUser.role,
+        kycStatus: foundUser.kycStatus,
       },
       requiresTwoFactor: twoFactorEnabled,
     };
@@ -381,21 +485,29 @@ export class EnhancedAuthService {
     ipAddress: string,
     userAgent?: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    // Generate access token
+    // Generate access token with configurable expiry
+    const accessTokenExpiry =
+      this.configService.get<string>("JWT_ACCESS_TOKEN_EXPIRY") || "15m";
     const payload = {
       sub: user.id,
       email: user.email,
       username: user.username,
       role: user.role,
     };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: "15m" });
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: accessTokenExpiry as any,
+    });
 
-    // Generate refresh token
+    // Generate refresh token with configurable expiry
+    const refreshTokenExpiryDays =
+      this.configService.get<number>("JWT_REFRESH_TOKEN_EXPIRY_DAYS") || 7;
     const refreshTokenValue = this.generateRefreshToken();
     const refreshTokenEntity = this.refreshTokenRepository.create({
       userId: user.id,
       token: refreshTokenValue,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      expiresAt: new Date(
+        Date.now() + refreshTokenExpiryDays * 24 * 60 * 60 * 1000,
+      ),
       ipAddress,
       userAgent,
     });
@@ -488,11 +600,7 @@ export class EnhancedAuthService {
       relations: ["user"],
     });
 
-    if (
-      !resetToken ||
-      resetToken.expiresAt < new Date() ||
-      resetToken.used
-    ) {
+    if (!resetToken || resetToken.expiresAt < new Date() || resetToken.used) {
       throw new BadRequestException("Invalid or expired reset token");
     }
 

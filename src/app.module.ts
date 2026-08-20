@@ -34,6 +34,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { PaymentsModule } from "./payments/payments.module";
 import { SearchModule } from "./search/search.module";
+import { DeploymentsModule } from "./deployments/deployments.module";
 
 // Auth entities
 import { Conversation } from "./messaging/entities/conversation.entity";
@@ -84,6 +85,9 @@ import { WebhookEvent } from "./payments/entities/webhook-event.entity";
 
 // Search entities
 import { SearchIndex } from "./search/entities/search-index.entity";
+// Deployment entities
+import { Deployment } from "./deployments/entities/deployment.entity";
+import { DeploymentEvent } from "./deployments/entities/deployment-event.entity";
 
 // Guards
 import { ThrottlerUserIpGuard } from "./common/guard/throttler.guard";
@@ -156,6 +160,8 @@ import { QuotaGuard } from "./common/guard/quota.guard";
             Transaction,
             WebhookEvent,
             SearchIndex,
+            Deployment,
+            DeploymentEvent,
           ],
           synchronize: !isProduction,
           logging: isProduction ? ["error"] : ["error", "warn", "schema"],
@@ -197,6 +203,7 @@ import { QuotaGuard } from "./common/guard/quota.guard";
     MessagingModule,
     PaymentsModule,
     SearchModule,
+    DeploymentsModule,
   ],
 
   controllers: [AppController],
