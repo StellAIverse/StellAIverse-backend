@@ -33,6 +33,7 @@ import { RateLimitModule } from "./quota/rate-limit.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { PaymentsModule } from "./payments/payments.module";
+import { SearchModule } from "./search/search.module";
 
 // Auth entities
 import { Conversation } from "./messaging/entities/conversation.entity";
@@ -80,6 +81,9 @@ import { PaymentCustomer } from "./payments/entities/payment-customer.entity";
 import { Subscription } from "./payments/entities/subscription.entity";
 import { Transaction } from "./payments/entities/transaction.entity";
 import { WebhookEvent } from "./payments/entities/webhook-event.entity";
+
+// Search entities
+import { SearchIndex } from "./search/entities/search-index.entity";
 
 // Guards
 import { ThrottlerUserIpGuard } from "./common/guard/throttler.guard";
@@ -151,6 +155,7 @@ import { QuotaGuard } from "./common/guard/quota.guard";
             Subscription,
             Transaction,
             WebhookEvent,
+            SearchIndex,
           ],
           synchronize: !isProduction,
           logging: isProduction ? ["error"] : ["error", "warn", "schema"],
@@ -191,6 +196,7 @@ import { QuotaGuard } from "./common/guard/quota.guard";
     NotificationsModule,
     MessagingModule,
     PaymentsModule,
+    SearchModule,
   ],
 
   controllers: [AppController],
