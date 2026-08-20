@@ -6,15 +6,39 @@ import {
   Portfolio,
   PortfolioStatus,
   PortfolioType,
-} from "../entities/portfolio.entity";
-import { PortfolioAsset, AssetType } from "../entities/portfolio-asset.entity";
+} from "../../src/portfolio/entities/portfolio.entity";
+import { PortfolioAsset, AssetType } from "../../src/portfolio/entities/portfolio-asset.entity";
 import {
   Transaction,
   TransactionType,
   TransactionStatus,
-} from "../entities/transaction.entity";
-import { PortfolioModule } from "../portfolio.module";
-import { User } from "../../user/entities/user.entity";
+} from "../../src/portfolio/entities/transaction.entity";
+import { RiskProfile } from "../../src/portfolio/entities/risk-profile.entity";
+import { OptimizationHistory } from "../../src/portfolio/entities/optimization-history.entity";
+import { RebalancingEvent } from "../../src/portfolio/entities/rebalancing-event.entity";
+import { PerformanceMetric } from "../../src/portfolio/entities/performance-metric.entity";
+import { BacktestResult } from "../../src/portfolio/entities/backtest-result.entity";
+import { PortfolioModule } from "../../src/portfolio/portfolio.module";
+import { User } from "../../src/user/entities/user.entity";
+import { GlobalExceptionFilter } from "../../src/common/filters/global-exception.filter";
+
+// Mock JWT strategy to bypass real authentication in tests
+jest.mock("../../src/auth/jwt.guard", () => ({
+  JwtAuthGuard: jest.fn().mockImplementation(() => ({
+    canActivate: (context: any) => {
+      const request = context.switchToHttp().getRequest();
+      request.user = { id: "test-user-id", email: "test@example.com" };
+      return true;
+    },
+  })),
+}));
+
+// Mock PortfolioOwnerGuard to always allow access in tests
+jest.mock("../../src/common/guard/portfolio-owner.guard", () => ({
+  PortfolioOwnerGuard: jest.fn().mockImplementation(() => ({
+    canActivate: () => true,
+  })),
+}));
 
 // Integration test for transaction tracking and portfolio operations
 describe("Portfolio Transactions Integration (e2e)", () => {
@@ -28,7 +52,17 @@ describe("Portfolio Transactions Integration (e2e)", () => {
         TypeOrmModule.forRoot({
           type: "sqlite",
           database: ":memory:",
-          entities: [User, Portfolio, PortfolioAsset, Transaction],
+          entities: [
+            User,
+            Portfolio,
+            PortfolioAsset,
+            Transaction,
+            RiskProfile,
+            OptimizationHistory,
+            RebalancingEvent,
+            PerformanceMetric,
+            BacktestResult,
+          ],
           synchronize: true,
         }),
         PortfolioModule,
@@ -36,12 +70,27 @@ describe("Portfolio Transactions Integration (e2e)", () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
+    app.useGlobalFilters(new GlobalExceptionFilter());
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
     await app.init();
 
-    // Create test user
-    userId = "test-user-1";
-    portfolioId = "test-portfolio-1";
+    // Create test user and portfolio
+    userId = "test-user-id";
+
+    // Create a portfolio first
+    const createResponse = await request(app.getHttpServer())
+      .post("/portfolio")
+      .send({
+        name: "Test Portfolio for Transactions",
+        description: "Integration test portfolio",
+      });
+    portfolioId = createResponse.body.id;
   });
 
   afterAll(async () => {
@@ -51,9 +100,8 @@ describe("Portfolio Transactions Integration (e2e)", () => {
   describe("Transaction Recording and History", () => {
     it("should record a BUY transaction", async () => {
       const response = await request(app.getHttpServer())
-        .post(`/portfolio/portfolios/${portfolioId}/transactions`)
-        .set("Authorization", `Bearer ${userId}`)
-        .send({
+        .post(`/portfolio/${portfolioId}/transactions`)
+                .send({
           type: TransactionType.BUY,
           ticker: "AAPL",
           name: "Apple Inc",
@@ -72,9 +120,8 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
     it("should record a DIVIDEND transaction", async () => {
       const response = await request(app.getHttpServer())
-        .post(`/portfolio/portfolios/${portfolioId}/transactions`)
-        .set("Authorization", `Bearer ${userId}`)
-        .send({
+        .post(`/portfolio/${portfolioId}/transactions`)
+                .send({
           type: TransactionType.DIVIDEND,
           ticker: "AAPL",
           name: "Apple Inc",
@@ -89,9 +136,8 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
     it("should record a SELL transaction", async () => {
       const response = await request(app.getHttpServer())
-        .post(`/portfolio/portfolios/${portfolioId}/transactions`)
-        .set("Authorization", `Bearer ${userId}`)
-        .send({
+        .post(`/portfolio/${portfolioId}/transactions`)
+                .send({
           type: TransactionType.SELL,
           ticker: "AAPL",
           name: "Apple Inc",
@@ -108,9 +154,8 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
     it("should record a STAKE transaction", async () => {
       const response = await request(app.getHttpServer())
-        .post(`/portfolio/portfolios/${portfolioId}/transactions`)
-        .set("Authorization", `Bearer ${userId}`)
-        .send({
+        .post(`/portfolio/${portfolioId}/transactions`)
+                .send({
           type: TransactionType.STAKE,
           ticker: "ETH",
           name: "Ethereum",
@@ -127,9 +172,8 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
     it("should record a TRANSFER transaction", async () => {
       const response = await request(app.getHttpServer())
-        .post(`/portfolio/portfolios/${portfolioId}/transactions`)
-        .set("Authorization", `Bearer ${userId}`)
-        .send({
+        .post(`/portfolio/${portfolioId}/transactions`)
+                .send({
           type: TransactionType.TRANSFER,
           ticker: "BTC",
           name: "Bitcoin",
@@ -148,7 +192,7 @@ describe("Portfolio Transactions Integration (e2e)", () => {
     it("should retrieve transaction history with pagination", async () => {
       const response = await request(app.getHttpServer())
         .get(
-          `/portfolio/portfolios/${portfolioId}/transactions?page=1&limit=20`,
+          `/portfolio/${portfolioId}/transactions?page=1&limit=20`,
         )
         .set("Authorization", `Bearer ${userId}`);
 
@@ -163,7 +207,7 @@ describe("Portfolio Transactions Integration (e2e)", () => {
     it("should filter transactions by type", async () => {
       const response = await request(app.getHttpServer())
         .get(
-          `/portfolio/portfolios/${portfolioId}/transactions?type=${TransactionType.BUY}`,
+          `/portfolio/${portfolioId}/transactions?type=${TransactionType.BUY}`,
         )
         .set("Authorization", `Bearer ${userId}`);
 
@@ -177,7 +221,7 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
     it("should filter transactions by ticker", async () => {
       const response = await request(app.getHttpServer())
-        .get(`/portfolio/portfolios/${portfolioId}/transactions?ticker=AAPL`)
+        .get(`/portfolio/${portfolioId}/transactions?ticker=AAPL`)
         .set("Authorization", `Bearer ${userId}`);
 
       expect(response.status).toBe(200);
@@ -194,7 +238,7 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
       const response = await request(app.getHttpServer())
         .get(
-          `/portfolio/portfolios/${portfolioId}/transactions?startDate=${startDate}&endDate=${endDate}`,
+          `/portfolio/${portfolioId}/transactions?startDate=${startDate}&endDate=${endDate}`,
         )
         .set("Authorization", `Bearer ${userId}`);
 
@@ -205,14 +249,14 @@ describe("Portfolio Transactions Integration (e2e)", () => {
     it("should retrieve a single transaction", async () => {
       // First, get a transaction ID
       const listResponse = await request(app.getHttpServer())
-        .get(`/portfolio/portfolios/${portfolioId}/transactions?limit=1`)
+        .get(`/portfolio/${portfolioId}/transactions?limit=1`)
         .set("Authorization", `Bearer ${userId}`);
 
       const transactionId = listResponse.body.transactions[0].id;
 
       const response = await request(app.getHttpServer())
         .get(
-          `/portfolio/portfolios/${portfolioId}/transactions/${transactionId}`,
+          `/portfolio/${portfolioId}/transactions/${transactionId}`,
         )
         .set("Authorization", `Bearer ${userId}`);
 
@@ -225,7 +269,7 @@ describe("Portfolio Transactions Integration (e2e)", () => {
     it("should calculate cost basis for a specific ticker", async () => {
       const response = await request(app.getHttpServer())
         .get(
-          `/portfolio/portfolios/${portfolioId}/transactions/cost-basis/AAPL`,
+          `/portfolio/${portfolioId}/transactions/cost-basis/AAPL`,
         )
         .set("Authorization", `Bearer ${userId}`);
 
@@ -239,7 +283,7 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
     it("should calculate cost basis for all holdings", async () => {
       const response = await request(app.getHttpServer())
-        .get(`/portfolio/portfolios/${portfolioId}/transactions/cost-basis`)
+        .get(`/portfolio/${portfolioId}/transactions/cost-basis`)
         .set("Authorization", `Bearer ${userId}`);
 
       expect(response.status).toBe(200);
@@ -254,7 +298,7 @@ describe("Portfolio Transactions Integration (e2e)", () => {
   describe("Transaction Export", () => {
     it("should export transactions as CSV", async () => {
       const response = await request(app.getHttpServer())
-        .get(`/portfolio/portfolios/${portfolioId}/transactions/export/csv`)
+        .get(`/portfolio/${portfolioId}/transactions/export/csv`)
         .set("Authorization", `Bearer ${userId}`);
 
       expect(response.status).toBe(200);
@@ -265,7 +309,7 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
     it("should export transactions as JSON", async () => {
       const response = await request(app.getHttpServer())
-        .get(`/portfolio/portfolios/${portfolioId}/transactions/export/json`)
+        .get(`/portfolio/${portfolioId}/transactions/export/json`)
         .set("Authorization", `Bearer ${userId}`);
 
       expect(response.status).toBe(200);
@@ -278,7 +322,7 @@ describe("Portfolio Transactions Integration (e2e)", () => {
     it("should export filtered transactions as CSV", async () => {
       const response = await request(app.getHttpServer())
         .get(
-          `/portfolio/portfolios/${portfolioId}/transactions/export/csv?type=${TransactionType.BUY}`,
+          `/portfolio/${portfolioId}/transactions/export/csv?type=${TransactionType.BUY}`,
         )
         .set("Authorization", `Bearer ${userId}`);
 
@@ -290,7 +334,7 @@ describe("Portfolio Transactions Integration (e2e)", () => {
   describe("Transaction Statistics", () => {
     it("should return transaction statistics", async () => {
       const response = await request(app.getHttpServer())
-        .get(`/portfolio/portfolios/${portfolioId}/transactions/stats`)
+        .get(`/portfolio/${portfolioId}/transactions/stats`)
         .set("Authorization", `Bearer ${userId}`);
 
       expect(response.status).toBe(200);
@@ -307,14 +351,14 @@ describe("Portfolio Transactions Integration (e2e)", () => {
     it("should archive a transaction", async () => {
       // First, get a transaction ID
       const listResponse = await request(app.getHttpServer())
-        .get(`/portfolio/portfolios/${portfolioId}/transactions?limit=1`)
+        .get(`/portfolio/${portfolioId}/transactions?limit=1`)
         .set("Authorization", `Bearer ${userId}`);
 
       const transactionId = listResponse.body.transactions[0].id;
 
       const response = await request(app.getHttpServer())
         .post(
-          `/portfolio/portfolios/${portfolioId}/transactions/${transactionId}/archive`,
+          `/portfolio/${portfolioId}/transactions/${transactionId}/archive`,
         )
         .set("Authorization", `Bearer ${userId}`);
 
@@ -325,7 +369,7 @@ describe("Portfolio Transactions Integration (e2e)", () => {
     it("should not return archived transactions in default query", async () => {
       // Get total count before archival
       const beforeArchive = await request(app.getHttpServer())
-        .get(`/portfolio/portfolios/${portfolioId}/transactions`)
+        .get(`/portfolio/${portfolioId}/transactions`)
         .set("Authorization", `Bearer ${userId}`);
 
       const beforeCount = beforeArchive.body.total;
@@ -333,7 +377,7 @@ describe("Portfolio Transactions Integration (e2e)", () => {
       // Should include archived when flag is set
       const withArchived = await request(app.getHttpServer())
         .get(
-          `/portfolio/portfolios/${portfolioId}/transactions?includeArchived=true`,
+          `/portfolio/${portfolioId}/transactions?includeArchived=true`,
         )
         .set("Authorization", `Bearer ${userId}`);
 
@@ -344,9 +388,8 @@ describe("Portfolio Transactions Integration (e2e)", () => {
   describe("Transaction Validation", () => {
     it("should reject transaction with zero quantity", async () => {
       const response = await request(app.getHttpServer())
-        .post(`/portfolio/portfolios/${portfolioId}/transactions`)
-        .set("Authorization", `Bearer ${userId}`)
-        .send({
+        .post(`/portfolio/${portfolioId}/transactions`)
+                .send({
           type: TransactionType.BUY,
           ticker: "AAPL",
           name: "Apple Inc",
@@ -359,9 +402,8 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
     it("should reject transaction with negative fees", async () => {
       const response = await request(app.getHttpServer())
-        .post(`/portfolio/portfolios/${portfolioId}/transactions`)
-        .set("Authorization", `Bearer ${userId}`)
-        .send({
+        .post(`/portfolio/${portfolioId}/transactions`)
+                .send({
           type: TransactionType.BUY,
           ticker: "AAPL",
           name: "Apple Inc",
@@ -375,9 +417,8 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
     it("should reject BUY transaction without price", async () => {
       const response = await request(app.getHttpServer())
-        .post(`/portfolio/portfolios/${portfolioId}/transactions`)
-        .set("Authorization", `Bearer ${userId}`)
-        .send({
+        .post(`/portfolio/${portfolioId}/transactions`)
+                .send({
           type: TransactionType.BUY,
           ticker: "AAPL",
           name: "Apple Inc",
@@ -389,9 +430,8 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
     it("should allow TRANSFER transaction without price", async () => {
       const response = await request(app.getHttpServer())
-        .post(`/portfolio/portfolios/${portfolioId}/transactions`)
-        .set("Authorization", `Bearer ${userId}`)
-        .send({
+        .post(`/portfolio/${portfolioId}/transactions`)
+                .send({
           type: TransactionType.TRANSFER,
           ticker: "BTC",
           name: "Bitcoin",
@@ -407,9 +447,8 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
       // First transaction
       await request(app.getHttpServer())
-        .post(`/portfolio/portfolios/${portfolioId}/transactions`)
-        .set("Authorization", `Bearer ${userId}`)
-        .send({
+        .post(`/portfolio/${portfolioId}/transactions`)
+                .send({
           type: TransactionType.BUY,
           ticker: "AAPL",
           name: "Apple Inc",
@@ -420,9 +459,8 @@ describe("Portfolio Transactions Integration (e2e)", () => {
 
       // Duplicate transaction
       const response = await request(app.getHttpServer())
-        .post(`/portfolio/portfolios/${portfolioId}/transactions`)
-        .set("Authorization", `Bearer ${userId}`)
-        .send({
+        .post(`/portfolio/${portfolioId}/transactions`)
+                .send({
           type: TransactionType.BUY,
           ticker: "AAPL",
           name: "Apple Inc",

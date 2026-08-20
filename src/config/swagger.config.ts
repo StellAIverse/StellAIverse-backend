@@ -5,7 +5,18 @@ export function setupSwagger(app: INestApplication): void {
   const config = new DocumentBuilder()
     .setTitle("StellAIverse Backend API")
     .setDescription(
-      "Comprehensive API documentation for StellAIverse backend services including agent management, oracle submissions, compute operations, and audit trails",
+      "Comprehensive API documentation for StellAIverse backend services including " +
+        "portfolio management, agent management, oracle submissions, compute operations, " +
+        "and audit trails.\n\n" +
+        "## Portfolio Management\n" +
+        "Endpoints for portfolio CRUD operations, asset management, optimization, " +
+        "rebalancing, performance analytics, backtesting, and ML predictions.\n\n" +
+        "### Rate Limiting\n" +
+        "- **Global**: 100 requests/minute\n" +
+        "- **Trading (Portfolio)**: 20 requests/minute\n" +
+        "- **Auth**: 5 requests/minute\n\n" +
+        "### Authentication\n" +
+        "All portfolio endpoints require JWT Bearer token authentication.",
     )
     .setVersion("1.0.0")
     .setContact(
@@ -41,6 +52,44 @@ export function setupSwagger(app: INestApplication): void {
     .addTag("Oracle", "Oracle data submissions")
     .addTag("Audit", "Audit trail and logging")
     .addTag("Profile", "User profile management")
+    .addTag(
+      "Portfolio Management",
+      "Portfolio CRUD, optimization, rebalancing, and analytics. " +
+        "Includes endpoints for creating, reading, updating, and archiving portfolios, " +
+        "managing assets, running optimizations, and tracking performance.",
+    )
+    .addTag(
+      "Portfolio Assets",
+      "Asset (holding) management within portfolios. " +
+        "Supports multi-chain assets with cost basis tracking and unrealized gain/loss.",
+    )
+    .addTag(
+      "Portfolio Optimization",
+      "Portfolio optimization using Modern Portfolio Theory, " +
+        "Black-Litterman model, risk parity, and ML-based strategies.",
+    )
+    .addTag(
+      "Portfolio Rebalancing",
+      "Portfolio rebalancing triggers, execution, and history. " +
+        "Supports manual, time-based, threshold-based, and ML-triggered rebalancing.",
+    )
+    .addTag(
+      "Portfolio Analytics",
+      "Performance analytics including returns, volatility, Sharpe ratio, " +
+        "Sortino ratio, VaR, drawdown, and benchmark comparison.",
+    )
+    .addTag(
+      "Portfolio Backtesting",
+      "Historical backtesting of portfolio strategies with performance metrics.",
+    )
+    .addTag(
+      "ML Predictions",
+      "Machine learning-based price predictions for portfolio assets.",
+    )
+    .addTag(
+      "Portfolio Transactions",
+      "Transaction recording, history, cost basis calculation, and export.",
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config, {
@@ -66,6 +115,8 @@ export function setupSwagger(app: INestApplication): void {
       defaultModelsExpandDepth: 2,
       defaultModelExpandDepth: 2,
       tryItOutEnabled: true,
+      tagsSorter: "alpha",
+      operationsSorter: "alpha",
     },
   });
 }
