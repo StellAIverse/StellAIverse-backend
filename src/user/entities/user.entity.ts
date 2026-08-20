@@ -73,8 +73,17 @@ export class User {
   @Column({ nullable: true })
   avatar: string | null;
 
-  @Column({ type: "jsonb", nullable: true, default: {} })
-  preferences: Record<string, any> | null;
+  @Column({ 
+    type: "jsonb", 
+    nullable: false, 
+    default: {
+      visibility: ProfileVisibility.PUBLIC,
+      showEmail: false,
+      showBio: true,
+      showActivity: true
+    } 
+  })
+  preferences: ProfilePreferences;
 
   @Column({
     type: "varchar",
