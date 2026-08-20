@@ -28,6 +28,19 @@ export enum KycStatus {
   REJECTED = "rejected",
 }
 
+export enum ProfileVisibility {
+  PUBLIC = "public",
+  PRIVATE = "private",
+  FOLLOWERS_ONLY = "followers_only",
+}
+
+export interface ProfilePreferences {
+  visibility: ProfileVisibility;
+  showEmail: boolean;
+  showBio: boolean;
+  showActivity: boolean;
+}
+
 @Entity("users")
 export class User {
   @PrimaryGeneratedColumn("uuid")
