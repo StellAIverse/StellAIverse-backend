@@ -33,6 +33,7 @@ import { RateLimitModule } from "./quota/rate-limit.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { PaymentsModule } from "./payments/payments.module";
+import { SearchModule } from "./search/search.module";
 import { DeploymentsModule } from "./deployments/deployments.module";
 
 // Auth entities
@@ -82,6 +83,8 @@ import { Subscription } from "./payments/entities/subscription.entity";
 import { Transaction } from "./payments/entities/transaction.entity";
 import { WebhookEvent } from "./payments/entities/webhook-event.entity";
 
+// Search entities
+import { SearchIndex } from "./search/entities/search-index.entity";
 // Deployment entities
 import { Deployment } from "./deployments/entities/deployment.entity";
 import { DeploymentEvent } from "./deployments/entities/deployment-event.entity";
@@ -156,6 +159,7 @@ import { QuotaGuard } from "./common/guard/quota.guard";
             Subscription,
             Transaction,
             WebhookEvent,
+            SearchIndex,
             Deployment,
             DeploymentEvent,
           ],
@@ -198,6 +202,7 @@ import { QuotaGuard } from "./common/guard/quota.guard";
     NotificationsModule,
     MessagingModule,
     PaymentsModule,
+    SearchModule,
     DeploymentsModule,
   ],
 
