@@ -1,9 +1,9 @@
-import { IsOptional, IsBoolean } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsBoolean } from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
 
 export class UpdateNotificationDto {
   @ApiProperty({
-    description: 'Mark notification as read',
+    description: "Mark notification as read",
     example: true,
     required: false,
   })
@@ -12,7 +12,7 @@ export class UpdateNotificationDto {
   isRead?: boolean;
 
   @ApiProperty({
-    description: 'Mark notification as archived',
+    description: "Mark notification as archived",
     example: true,
     required: false,
   })

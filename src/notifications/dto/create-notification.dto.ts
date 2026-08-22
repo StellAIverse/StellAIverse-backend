@@ -5,20 +5,19 @@ import {
   IsOptional,
   IsString,
   IsObject,
-  IsBoolean,
-} from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+} from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
 import {
   NotificationType,
   NotificationChannel,
   NotificationPriority,
   NotificationTemplate,
-} from '../entities/notification.enums';
+} from "../entities/notification.enums";
 
 export class CreateNotificationDto {
   @ApiProperty({
-    description: 'ID of the user to send the notification to',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    description: "ID of the user to send the notification to",
+    example: "123e4567-e89b-12d3-a456-426614174000",
   })
   @IsNotEmpty()
   @IsUUID()
@@ -26,7 +25,7 @@ export class CreateNotificationDto {
 
   @ApiProperty({
     enum: NotificationType,
-    description: 'Type of notification to send',
+    description: "Type of notification to send",
     example: NotificationType.EMAIL,
   })
   @IsEnum(NotificationType)
@@ -34,7 +33,7 @@ export class CreateNotificationDto {
 
   @ApiProperty({
     enum: NotificationChannel,
-    description: 'Channel to send the notification through',
+    description: "Channel to send the notification through",
     example: NotificationChannel.SENDGRID,
   })
   @IsEnum(NotificationChannel)
@@ -42,7 +41,7 @@ export class CreateNotificationDto {
 
   @ApiProperty({
     enum: NotificationPriority,
-    description: 'Priority of the notification',
+    description: "Priority of the notification",
     default: NotificationPriority.NORMAL,
     required: false,
   })
@@ -52,15 +51,15 @@ export class CreateNotificationDto {
 
   @ApiProperty({
     enum: NotificationTemplate,
-    description: 'Template to use for the notification',
+    description: "Template to use for the notification",
     example: NotificationTemplate.WELCOME,
   })
   @IsEnum(NotificationTemplate)
   template: NotificationTemplate;
 
   @ApiProperty({
-    description: 'Data to populate the template with',
-    example: { name: 'John Doe', email: 'john@example.com' },
+    description: "Data to populate the template with",
+    example: { name: "John Doe", email: "john@example.com" },
     required: false,
   })
   @IsOptional()
@@ -68,8 +67,8 @@ export class CreateNotificationDto {
   templateData?: Record<string, any>;
 
   @ApiProperty({
-    description: 'Custom subject line (overrides template)',
-    example: 'Welcome to StellAIverse!',
+    description: "Custom subject line (overrides template)",
+    example: "Welcome to StellAIverse!",
     required: false,
   })
   @IsOptional()
@@ -77,8 +76,8 @@ export class CreateNotificationDto {
   subject?: string;
 
   @ApiProperty({
-    description: 'Custom content (overrides template)',
-    example: 'Thank you for joining our platform.',
+    description: "Custom content (overrides template)",
+    example: "Thank you for joining our platform.",
     required: false,
   })
   @IsOptional()
@@ -86,8 +85,8 @@ export class CreateNotificationDto {
   content?: string;
 
   @ApiProperty({
-    description: 'Override recipient email/device token',
-    example: 'recipient@example.com',
+    description: "Override recipient email/device token",
+    example: "recipient@example.com",
     required: false,
   })
   @IsOptional()
@@ -95,7 +94,7 @@ export class CreateNotificationDto {
   recipient?: string;
 
   @ApiProperty({
-    description: 'Additional metadata for the notification',
+    description: "Additional metadata for the notification",
     required: false,
   })
   @IsOptional()
