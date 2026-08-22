@@ -1,4 +1,14 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean, IsEnum, IsUrl, Min, Max } from "class-validator";
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsBoolean,
+  IsEnum,
+  IsUrl,
+  Min,
+  Max,
+} from "class-validator";
 import { plainToInstance } from "class-transformer";
 
 export enum NodeEnv {
@@ -113,9 +123,64 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   STRIPE_WEBHOOK_SECRET?: string;
+
+  // Notification transports — all optional; unset providers run in test mode.
+  // SendGrid (email)
+  @IsOptional()
+  @IsString()
+  SENDGRID_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  SENDGRID_FROM_EMAIL?: string;
+
+  @IsOptional()
+  @IsString()
+  SENDGRID_FROM_NAME?: string;
+
+  // Mailgun (email)
+  @IsOptional()
+  @IsString()
+  MAILGUN_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  MAILGUN_DOMAIN?: string;
+
+  @IsOptional()
+  @IsString()
+  MAILGUN_FROM_EMAIL?: string;
+
+  @IsOptional()
+  @IsString()
+  MAILGUN_FROM_NAME?: string;
+
+  // FCM (push — Android / Web)
+  @IsOptional()
+  @IsString()
+  FCM_SERVER_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  FCM_PROJECT_ID?: string;
+
+  // APNs (push — iOS)
+  @IsOptional()
+  @IsString()
+  APNS_AUTH_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  APNS_BUNDLE_ID?: string;
+
+  @IsOptional()
+  @IsNumber()
+  APNS_RATE_LIMIT?: number;
 }
 
-export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
+export function validateEnv(
+  config: Record<string, unknown>,
+): EnvironmentVariables {
   const validatedConfig = plainToInstance(EnvironmentVariables, config, {
     enableImplicitConversion: true,
   });
