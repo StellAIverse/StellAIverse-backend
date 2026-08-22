@@ -1,12 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Notification } from '../entities/notification.entity';
+import { Injectable, Logger } from "@nestjs/common";
+import { Notification } from "../entities/notification.entity";
+import { NotificationChannel } from "../entities/notification.enums";
 import {
   NotificationProvider,
   ProviderResponse,
-} from '../interfaces/notification-provider.interface';
+} from "../interfaces/notification-provider.interface";
 
 @Injectable()
 export class InAppProvider implements NotificationProvider {
+  readonly channel = NotificationChannel.INTERNAL;
   private readonly logger = new Logger(InAppProvider.name);
 
   async send(notification: Notification): Promise<ProviderResponse> {
@@ -14,7 +16,7 @@ export class InAppProvider implements NotificationProvider {
       this.logger.log(
         `In-app notification stored for user ${notification.userId}: ${notification.subject}`,
       );
-      
+
       return {
         success: true,
         messageId: notification.id,
@@ -25,7 +27,10 @@ export class InAppProvider implements NotificationProvider {
         },
       };
     } catch (error) {
-      this.logger.error(`Failed to store in-app notification: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to store in-app notification: ${error.message}`,
+        error.stack,
+      );
       return {
         success: false,
         error: error.message,

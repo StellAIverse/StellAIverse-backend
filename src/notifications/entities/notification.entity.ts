@@ -5,18 +5,18 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
-} from 'typeorm';
+} from "typeorm";
 import {
   NotificationType,
   NotificationStatus,
   NotificationChannel,
   NotificationPriority,
   NotificationTemplate,
-} from './notification.enums';
+} from "./notification.enums";
 
-@Entity('notifications')
+@Entity("notifications")
 export class Notification {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
   @Column()
@@ -24,14 +24,14 @@ export class Notification {
   userId: string;
 
   @Column({
-    type: 'varchar',
+    type: "varchar",
     length: 50,
     enum: [...Object.values(NotificationType)],
   })
   type: NotificationType;
 
   @Column({
-    type: 'varchar',
+    type: "varchar",
     length: 50,
     enum: [...Object.values(NotificationStatus)],
     default: NotificationStatus.PENDING,
@@ -40,14 +40,14 @@ export class Notification {
   status: NotificationStatus;
 
   @Column({
-    type: 'varchar',
+    type: "varchar",
     length: 50,
     enum: [...Object.values(NotificationChannel)],
   })
   channel: NotificationChannel;
 
   @Column({
-    type: 'varchar',
+    type: "varchar",
     length: 50,
     enum: [...Object.values(NotificationPriority)],
     default: NotificationPriority.NORMAL,
@@ -55,48 +55,48 @@ export class Notification {
   priority: NotificationPriority;
 
   @Column({
-    type: 'varchar',
+    type: "varchar",
     length: 100,
     enum: [...Object.values(NotificationTemplate)],
   })
   template: NotificationTemplate;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: "jsonb", nullable: true })
   templateData: Record<string, any>;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   subject?: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   content?: string;
 
   @Column({ nullable: true })
   recipient: string;
 
-  @Column({ type: 'int', default: 0 })
+  @Column({ type: "int", default: 0 })
   retryCount: number;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   nextRetryAt?: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   deliveredAt?: Date;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: "boolean", default: false })
   @Index()
   isRead: boolean;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: "boolean", default: false })
   @Index()
   isArchived: boolean;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: "jsonb", nullable: true })
   metadata?: Record<string, any>;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   failureReason?: string;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: "int", nullable: true })
   providerResponseCode?: number;
 
   @CreateDateColumn()

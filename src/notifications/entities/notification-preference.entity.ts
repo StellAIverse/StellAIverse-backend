@@ -5,19 +5,19 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
-} from 'typeorm';
-import { NotificationType, NotificationTemplate } from './notification.enums';
+} from "typeorm";
+import { NotificationType, NotificationTemplate } from "./notification.enums";
 
-@Entity('notification_preferences')
+@Entity("notification_preferences")
 export class NotificationPreference {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
   @Column()
   @Index({ unique: true })
   userId: string;
 
-  @Column({ type: 'jsonb', default: {} })
+  @Column({ type: "jsonb", default: {} })
   channelPreferences: {
     [key in NotificationType]?: {
       enabled: boolean;
@@ -26,7 +26,7 @@ export class NotificationPreference {
     };
   };
 
-  @Column({ type: 'jsonb', default: {} })
+  @Column({ type: "jsonb", default: {} })
   templatePreferences: {
     [key in NotificationTemplate]?: {
       enabled: boolean;
@@ -34,19 +34,19 @@ export class NotificationPreference {
     };
   };
 
-  @Column({ type: 'boolean', default: true })
+  @Column({ type: "boolean", default: true })
   emailEnabled: boolean;
 
-  @Column({ type: 'boolean', default: true })
+  @Column({ type: "boolean", default: true })
   pushEnabled: boolean;
 
-  @Column({ type: 'boolean', default: true })
+  @Column({ type: "boolean", default: true })
   inAppEnabled: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   quietHoursStart?: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   quietHoursEnd?: Date;
 
   @CreateDateColumn()

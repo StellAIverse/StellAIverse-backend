@@ -1,14 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Notification } from '../entities/notification.entity';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Notification } from "../entities/notification.entity";
+import { NotificationChannel } from "../entities/notification.enums";
 import {
   NotificationProvider,
   ProviderResponse,
   PushProviderConfig,
-} from '../interfaces/notification-provider.interface';
+} from "../interfaces/notification-provider.interface";
 
 @Injectable()
 export class APNsProvider implements NotificationProvider {
+  readonly channel = NotificationChannel.APNs;
   private readonly logger = new Logger(APNsProvider.name);
   private config: PushProviderConfig;
   private lastRequestTime: number = 0;
@@ -16,10 +18,10 @@ export class APNsProvider implements NotificationProvider {
 
   constructor(private configService: ConfigService) {
     this.config = {
-      apiKey: this.configService.get<string>('APNS_AUTH_KEY', ''),
-      bundleId: this.configService.get<string>('APNS_BUNDLE_ID', ''),
+      apiKey: this.configService.get<string>("APNS_AUTH_KEY", ""),
+      bundleId: this.configService.get<string>("APNS_BUNDLE_ID", ""),
       rateLimitPerMinute: this.configService.get<number>(
-        'APNS_RATE_LIMIT',
+        "APNS_RATE_LIMIT",
         500,
       ),
     };
@@ -33,16 +35,18 @@ export class APNsProvider implements NotificationProvider {
       if (!pushTokens.length) {
         return {
           success: false,
-          error: 'No APNS tokens provided',
+          error: "No APNS tokens provided",
           statusCode: 400,
         };
       }
 
       if (!this.config.apiKey || !this.config.bundleId) {
         this.logger.warn(
-          'APNs credentials not configured, running in test mode',
+          "APNs credentials not configured, running in test mode",
         );
-        this.logger.log(`[TEST MODE] Would send APNs to ${pushTokens.length} iOS devices`);
+        this.logger.log(
+          `[TEST MODE] Would send APNs to ${pushTokens.length} iOS devices`,
+        );
         this.logger.log(`[TEST MODE] Title: ${notification.subject}`);
         this.logger.log(`[TEST MODE] Body: ${notification.content}`);
 
@@ -65,7 +69,10 @@ export class APNsProvider implements NotificationProvider {
         response: { apnsId: `apns-${Date.now()}` },
       };
     } catch (error) {
-      this.logger.error(`Failed to send APNs notification: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to send APNs notification: ${error.message}`,
+        error.stack,
+      );
       return {
         success: false,
         error: error.message,

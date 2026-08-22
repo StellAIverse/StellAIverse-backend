@@ -1,19 +1,19 @@
-import { Process, Processor } from '@nestjs/bull';
-import { Job } from 'bull';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Logger } from '@nestjs/common';
-import { Notification } from '../entities/notification.entity';
-import { NotificationDeliveryLog } from '../entities/notification-delivery-log.entity';
-import { NotificationStatus } from '../entities/notification.enums';
-import { ProviderFactory } from '../providers/provider-factory.service';
+import { Process, Processor } from "@nestjs/bull";
+import { Job } from "bull";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { Logger } from "@nestjs/common";
+import { Notification } from "../entities/notification.entity";
+import { NotificationDeliveryLog } from "../entities/notification-delivery-log.entity";
+import { NotificationStatus } from "../entities/notification.enums";
+import { ProviderFactory } from "../providers/provider-factory.service";
 
 export interface NotificationJobData {
   notificationId: string;
   retryCount: number;
 }
 
-@Processor('notifications')
+@Processor("notifications")
 export class NotificationProcessor {
   private readonly logger = new Logger(NotificationProcessor.name);
 
@@ -29,11 +29,13 @@ export class NotificationProcessor {
     private providerFactory: ProviderFactory,
   ) {}
 
-  @Process('process-notification')
+  @Process("process-notification")
   async processNotification(job: Job<NotificationJobData>) {
     const { notificationId, retryCount } = job.data;
 
-    this.logger.debug(`Processing notification ${notificationId}, attempt ${retryCount + 1}`);
+    this.logger.debug(
+      `Processing notification ${notificationId}, attempt ${retryCount + 1}`,
+    );
 
     const notification = await this.notificationRepository.findOne({
       where: { id: notificationId },
@@ -45,7 +47,9 @@ export class NotificationProcessor {
     }
 
     if (notification.status === NotificationStatus.DEAD_LETTER) {
-      this.logger.warn(`Notification ${notificationId} is in dead letter queue, skipping`);
+      this.logger.warn(
+        `Notification ${notificationId} is in dead letter queue, skipping`,
+      );
       return;
     }
 
@@ -60,11 +64,17 @@ export class NotificationProcessor {
       if (result.success) {
         await this.handleSuccess(notification, result);
       } else {
-        await this.handleFailure(notification, result.error || 'Unknown error', result.statusCode);
-        throw new Error(result.error || 'Delivery failed');
+        await this.handleFailure(
+          notification,
+          result.error || "Unknown error",
+          result.statusCode,
+        );
+        throw new Error(result.error || "Delivery failed");
       }
     } catch (error) {
-      this.logger.error(`Failed to process notification ${notificationId}: ${error.message}`);
+      this.logger.error(
+        `Failed to process notification ${notificationId}: ${error.message}`,
+      );
       throw error;
     }
   }
@@ -117,7 +127,9 @@ export class NotificationProcessor {
         failureReason: errorMessage,
         providerResponseCode: statusCode,
       });
-      this.logger.error(`Notification ${notification.id} moved to dead letter queue after ${this.maxRetries} attempts`);
+      this.logger.error(
+        `Notification ${notification.id} moved to dead letter queue after ${this.maxRetries} attempts`,
+      );
     }
 
     await this.deliveryLogRepository.save({

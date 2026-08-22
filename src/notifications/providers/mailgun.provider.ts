@@ -1,15 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import axios from 'axios';
-import { Notification } from '../entities/notification.entity';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import axios from "axios";
+import { Notification } from "../entities/notification.entity";
+import { NotificationChannel } from "../entities/notification.enums";
 import {
   NotificationProvider,
   ProviderResponse,
   EmailProviderConfig,
-} from '../interfaces/notification-provider.interface';
+} from "../interfaces/notification-provider.interface";
 
 @Injectable()
 export class MailgunProvider implements NotificationProvider {
+  readonly channel = NotificationChannel.MAILGUN;
   private readonly logger = new Logger(MailgunProvider.name);
   private config: EmailProviderConfig;
   private lastRequestTime: number = 0;
@@ -17,18 +19,18 @@ export class MailgunProvider implements NotificationProvider {
 
   constructor(private configService: ConfigService) {
     this.config = {
-      apiKey: this.configService.get<string>('MAILGUN_API_KEY', ''),
-      domain: this.configService.get<string>('MAILGUN_DOMAIN', ''),
+      apiKey: this.configService.get<string>("MAILGUN_API_KEY", ""),
+      domain: this.configService.get<string>("MAILGUN_DOMAIN", ""),
       fromEmail: this.configService.get<string>(
-        'MAILGUN_FROM_EMAIL',
-        'notifications@mg.stellaiverse.com',
+        "MAILGUN_FROM_EMAIL",
+        "notifications@mg.stellaiverse.com",
       ),
       fromName: this.configService.get<string>(
-        'MAILGUN_FROM_NAME',
-        'StellAIverse',
+        "MAILGUN_FROM_NAME",
+        "StellAIverse",
       ),
       rateLimitPerMinute: this.configService.get<number>(
-        'MAILGUN_RATE_LIMIT',
+        "MAILGUN_RATE_LIMIT",
         100,
       ),
     };
@@ -40,9 +42,11 @@ export class MailgunProvider implements NotificationProvider {
 
       if (!this.config.apiKey || !this.config.domain) {
         this.logger.warn(
-          'Mailgun API key or domain not configured, running in test mode',
+          "Mailgun API key or domain not configured, running in test mode",
         );
-        this.logger.log(`[TEST MODE] Would send email to: ${notification.recipient}`);
+        this.logger.log(
+          `[TEST MODE] Would send email to: ${notification.recipient}`,
+        );
         this.logger.log(`[TEST MODE] Subject: ${notification.subject}`);
 
         return {
@@ -59,11 +63,11 @@ export class MailgunProvider implements NotificationProvider {
         formData,
         {
           auth: {
-            username: 'api',
+            username: "api",
             password: this.config.apiKey,
           },
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            "Content-Type": "application/x-www-form-urlencoded",
           },
         },
       );
@@ -78,7 +82,10 @@ export class MailgunProvider implements NotificationProvider {
         response: response.data,
       };
     } catch (error) {
-      this.logger.error(`Failed to send email via Mailgun: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to send email via Mailgun: ${error.message}`,
+        error.stack,
+      );
       return {
         success: false,
         error: error.message,

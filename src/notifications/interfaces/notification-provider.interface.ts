@@ -1,4 +1,13 @@
-import { Notification } from '../entities/notification.entity';
+import { Notification } from "../entities/notification.entity";
+import { NotificationChannel } from "../entities/notification.enums";
+
+/**
+ * DI token that resolves to every registered {@link NotificationProvider}.
+ * The {@link ProviderFactory} injects this array and indexes it by `channel`,
+ * so adding a new transport only requires implementing the interface and
+ * registering the provider in the token's factory (see notifications.module.ts).
+ */
+export const NOTIFICATION_PROVIDERS = "NOTIFICATION_PROVIDERS";
 
 export interface EmailProviderConfig {
   apiKey: string;
@@ -16,6 +25,9 @@ export interface PushProviderConfig {
 }
 
 export interface NotificationProvider {
+  /** The channel this provider delivers on. Used by ProviderFactory to route. */
+  readonly channel: NotificationChannel;
+
   send(notification: Notification): Promise<{
     success: boolean;
     messageId?: string;

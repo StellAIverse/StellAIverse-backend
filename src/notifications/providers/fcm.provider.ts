@@ -1,15 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import axios from 'axios';
-import { Notification } from '../entities/notification.entity';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import axios from "axios";
+import { Notification } from "../entities/notification.entity";
+import { NotificationChannel } from "../entities/notification.enums";
 import {
   NotificationProvider,
   ProviderResponse,
   PushProviderConfig,
-} from '../interfaces/notification-provider.interface';
+} from "../interfaces/notification-provider.interface";
 
 @Injectable()
 export class FCMProvider implements NotificationProvider {
+  readonly channel = NotificationChannel.FCM;
   private readonly logger = new Logger(FCMProvider.name);
   private config: PushProviderConfig;
   private lastRequestTime: number = 0;
@@ -17,12 +19,9 @@ export class FCMProvider implements NotificationProvider {
 
   constructor(private configService: ConfigService) {
     this.config = {
-      apiKey: this.configService.get<string>('FCM_SERVER_KEY', ''),
-      projectId: this.configService.get<string>('FCM_PROJECT_ID', ''),
-      rateLimitPerMinute: this.configService.get<number>(
-        'FCM_RATE_LIMIT',
-        500,
-      ),
+      apiKey: this.configService.get<string>("FCM_SERVER_KEY", ""),
+      projectId: this.configService.get<string>("FCM_PROJECT_ID", ""),
+      rateLimitPerMinute: this.configService.get<number>("FCM_RATE_LIMIT", 500),
     };
   }
 
@@ -34,14 +33,16 @@ export class FCMProvider implements NotificationProvider {
       if (!pushTokens.length) {
         return {
           success: false,
-          error: 'No push tokens provided',
+          error: "No push tokens provided",
           statusCode: 400,
         };
       }
 
       if (!this.config.apiKey) {
-        this.logger.warn('FCM API key not configured, running in test mode');
-        this.logger.log(`[TEST MODE] Would send push to ${pushTokens.length} devices`);
+        this.logger.warn("FCM API key not configured, running in test mode");
+        this.logger.log(
+          `[TEST MODE] Would send push to ${pushTokens.length} devices`,
+        );
         this.logger.log(`[TEST MODE] Title: ${notification.subject}`);
         this.logger.log(`[TEST MODE] Body: ${notification.content}`);
 
@@ -60,7 +61,7 @@ export class FCMProvider implements NotificationProvider {
         {
           headers: {
             Authorization: `Bearer ${await this.getAccessToken()}`,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         },
       );
@@ -75,7 +76,10 @@ export class FCMProvider implements NotificationProvider {
         response: response.data,
       };
     } catch (error) {
-      this.logger.error(`Failed to send push notification: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to send push notification: ${error.message}`,
+        error.stack,
+      );
       return {
         success: false,
         error: error.message,
@@ -96,14 +100,14 @@ export class FCMProvider implements NotificationProvider {
         data: notification.templateData || {},
         android: {
           notification: {
-            sound: 'default',
-            priority: 'high',
+            sound: "default",
+            priority: "high",
           },
         },
         apns: {
           payload: {
             aps: {
-              sound: 'default',
+              sound: "default",
               badge: 1,
             },
           },

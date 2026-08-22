@@ -1,15 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import axios from 'axios';
-import { Notification } from '../entities/notification.entity';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import axios from "axios";
+import { Notification } from "../entities/notification.entity";
+import { NotificationChannel } from "../entities/notification.enums";
 import {
   NotificationProvider,
   ProviderResponse,
   EmailProviderConfig,
-} from '../interfaces/notification-provider.interface';
+} from "../interfaces/notification-provider.interface";
 
 @Injectable()
 export class SendGridProvider implements NotificationProvider {
+  readonly channel = NotificationChannel.SENDGRID;
   private readonly logger = new Logger(SendGridProvider.name);
   private config: EmailProviderConfig;
   private lastRequestTime: number = 0;
@@ -17,17 +19,17 @@ export class SendGridProvider implements NotificationProvider {
 
   constructor(private configService: ConfigService) {
     this.config = {
-      apiKey: this.configService.get<string>('SENDGRID_API_KEY', ''),
+      apiKey: this.configService.get<string>("SENDGRID_API_KEY", ""),
       fromEmail: this.configService.get<string>(
-        'SENDGRID_FROM_EMAIL',
-        'notifications@stellaiverse.com',
+        "SENDGRID_FROM_EMAIL",
+        "notifications@stellaiverse.com",
       ),
       fromName: this.configService.get<string>(
-        'SENDGRID_FROM_NAME',
-        'StellAIverse',
+        "SENDGRID_FROM_NAME",
+        "StellAIverse",
       ),
       rateLimitPerMinute: this.configService.get<number>(
-        'SENDGRID_RATE_LIMIT',
+        "SENDGRID_RATE_LIMIT",
         100,
       ),
     };
@@ -39,9 +41,11 @@ export class SendGridProvider implements NotificationProvider {
 
       if (!this.config.apiKey) {
         this.logger.warn(
-          'SendGrid API key not configured, running in test mode',
+          "SendGrid API key not configured, running in test mode",
         );
-        this.logger.log(`[TEST MODE] Would send email to: ${notification.recipient}`);
+        this.logger.log(
+          `[TEST MODE] Would send email to: ${notification.recipient}`,
+        );
         this.logger.log(`[TEST MODE] Subject: ${notification.subject}`);
         this.logger.log(`[TEST MODE] Template: ${notification.template}`);
 
@@ -55,12 +59,12 @@ export class SendGridProvider implements NotificationProvider {
       const emailData = this.buildEmailData(notification);
 
       const response = await axios.post(
-        'https://api.sendgrid.com/v3/mail/send',
+        "https://api.sendgrid.com/v3/mail/send",
         emailData,
         {
           headers: {
             Authorization: `Bearer ${this.config.apiKey}`,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         },
       );
@@ -70,7 +74,7 @@ export class SendGridProvider implements NotificationProvider {
 
       return {
         success: true,
-        messageId: response.headers['x-message-id'],
+        messageId: response.headers["x-message-id"],
         statusCode: response.status,
         response: response.data,
       };
@@ -105,14 +109,14 @@ export class SendGridProvider implements NotificationProvider {
 
   private getTemplateId(template: string): string | undefined {
     const templateIds: Record<string, string> = {
-      welcome: this.configService.get<string>('SENDGRID_TEMPLATE_WELCOME', ''),
+      welcome: this.configService.get<string>("SENDGRID_TEMPLATE_WELCOME", ""),
       password_reset: this.configService.get<string>(
-        'SENDGRID_TEMPLATE_PASSWORD_RESET',
-        '',
+        "SENDGRID_TEMPLATE_PASSWORD_RESET",
+        "",
       ),
       email_verification: this.configService.get<string>(
-        'SENDGRID_TEMPLATE_EMAIL_VERIFICATION',
-        '',
+        "SENDGRID_TEMPLATE_EMAIL_VERIFICATION",
+        "",
       ),
     };
     return templateIds[template] || undefined;

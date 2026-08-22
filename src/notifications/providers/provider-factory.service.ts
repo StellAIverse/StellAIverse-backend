@@ -1,36 +1,39 @@
-import { Injectable } from '@nestjs/common';
-import { NotificationChannel } from '../entities/notification.enums';
-import { SendGridProvider } from './sendgrid.provider';
-import { MailgunProvider } from './mailgun.provider';
-import { FCMProvider } from './fcm.provider';
-import { APNsProvider } from './apns.provider';
-import { InAppProvider } from './in-app.provider';
-import { NotificationProvider } from '../interfaces/notification-provider.interface';
+import { Inject, Injectable } from "@nestjs/common";
+import { NotificationChannel } from "../entities/notification.enums";
+import {
+  NotificationProvider,
+  NOTIFICATION_PROVIDERS,
+} from "../interfaces/notification-provider.interface";
 
+/**
+ * Resolves the delivery provider for a given channel.
+ *
+ * Providers are injected as an array via the {@link NOTIFICATION_PROVIDERS}
+ * token and indexed by their `channel`. Adding a new transport therefore
+ * requires no change here — implement {@link NotificationProvider} and register
+ * the provider in the token's factory (see notifications.module.ts).
+ */
 @Injectable()
 export class ProviderFactory {
+  private readonly providers: Map<NotificationChannel, NotificationProvider>;
+
   constructor(
-    private sendGridProvider: SendGridProvider,
-    private mailgunProvider: MailgunProvider,
-    private fcmProvider: FCMProvider,
-    private apnsProvider: APNsProvider,
-    private inAppProvider: InAppProvider,
-  ) {}
+    @Inject(NOTIFICATION_PROVIDERS)
+    providers: NotificationProvider[],
+  ) {
+    this.providers = new Map(providers.map((p) => [p.channel, p]));
+  }
 
   getProvider(channel: NotificationChannel): NotificationProvider {
-    switch (channel) {
-      case NotificationChannel.SENDGRID:
-        return this.sendGridProvider;
-      case NotificationChannel.MAILGUN:
-        return this.mailgunProvider;
-      case NotificationChannel.FCM:
-        return this.fcmProvider;
-      case NotificationChannel.APNs:
-        return this.apnsProvider;
-      case NotificationChannel.INTERNAL:
-        return this.inAppProvider;
-      default:
-        throw new Error(`Unsupported notification channel: ${channel}`);
+    const provider = this.providers.get(channel);
+    if (!provider) {
+      throw new Error(`Unsupported notification channel: ${channel}`);
     }
+    return provider;
+  }
+
+  /** Channels with a registered provider (useful for diagnostics/tests). */
+  supportedChannels(): NotificationChannel[] {
+    return [...this.providers.keys()];
   }
 }
