@@ -6,26 +6,24 @@ import {
   Param,
   UseGuards,
   ParseUUIDPipe,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { NotificationPreference } from '../entities/notification-preference.entity';
+} from "@nestjs/common";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from "@nestjs/swagger";
+import { JwtAuthGuard } from "src/auth/guards/jwt-auth.guard";
+import { CurrentUser } from "src/auth/decorators/current-user.decorator";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { NotificationPreference } from "../entities/notification-preference.entity";
+import { UpdatePreferencesDto } from "../dto/update-preferences.dto";
 
-class UpdatePreferencesDto {
-  emailEnabled?: boolean;
-  pushEnabled?: boolean;
-  inAppEnabled?: boolean;
-  channelPreferences?: any;
-  templatePreferences?: any;
-}
-
-@ApiTags('notification-preferences')
+@ApiTags("notification-preferences")
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('users/:id/notification-preferences')
+@Controller("users/:id/notification-preferences")
 export class NotificationPreferencesController {
   constructor(
     @InjectRepository(NotificationPreference)
@@ -33,14 +31,17 @@ export class NotificationPreferencesController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get notification preferences for a user' })
-  @ApiResponse({ status: 200, description: 'Preferences retrieved successfully' })
+  @ApiOperation({ summary: "Get notification preferences for a user" })
+  @ApiResponse({
+    status: 200,
+    description: "Preferences retrieved successfully",
+  })
   async getPreferences(
-    @Param('id', ParseUUIDPipe) userId: string,
+    @Param("id", ParseUUIDPipe) userId: string,
     @CurrentUser() currentUser: any,
   ) {
     if (currentUser.id !== userId) {
-      throw new Error('Unauthorized to access these preferences');
+      throw new Error("Unauthorized to access these preferences");
     }
 
     let preferences = await this.preferenceRepository.findOne({
@@ -61,15 +62,15 @@ export class NotificationPreferencesController {
   }
 
   @Put()
-  @ApiOperation({ summary: 'Update notification preferences' })
-  @ApiResponse({ status: 200, description: 'Preferences updated successfully' })
+  @ApiOperation({ summary: "Update notification preferences" })
+  @ApiResponse({ status: 200, description: "Preferences updated successfully" })
   async updatePreferences(
-    @Param('id', ParseUUIDPipe) userId: string,
+    @Param("id", ParseUUIDPipe) userId: string,
     @Body() updateDto: UpdatePreferencesDto,
     @CurrentUser() currentUser: any,
   ) {
     if (currentUser.id !== userId) {
-      throw new Error('Unauthorized to update these preferences');
+      throw new Error("Unauthorized to update these preferences");
     }
 
     let preferences = await this.preferenceRepository.findOne({
