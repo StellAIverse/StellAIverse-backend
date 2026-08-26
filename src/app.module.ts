@@ -18,6 +18,7 @@ import { AppService } from "./app.service";
 
 // Modules
 import { AuthModule } from "./auth/auth.module";
+import { AdminModule } from "./admin/admin.module";
 import { UserModule } from "./user/user.module";
 import { ProfileModule } from "./profile/profile.module";
 import { AuditModule } from "./audit/audit.module";
@@ -187,6 +188,7 @@ import { QuotaGuard } from "./common/guard/quota.guard";
     TerminusModule,
 
     AuthModule,
+    AdminModule,
     UserModule,
     ProfileModule,
     AuditModule,
