@@ -23,43 +23,8 @@ import { TransactionHistoryService } from "./services/transaction-history.servic
 
 // Controllers
 import { PortfolioController } from "./portfolio.controller";
-
-// Guards
 import { PortfolioOwnerGuard } from "../common/guard/portfolio-owner.guard";
 
-/**
- * Portfolio Management Module
- *
- * Provides REST API endpoints for portfolio CRUD operations, asset management,
- * optimization, rebalancing, performance analytics, backtesting, and ML predictions.
- *
- * ## Endpoints
- * - `POST   /portfolio`            – Create portfolio
- * - `GET    /portfolio`            – List user portfolios (paginated)
- * - `GET    /portfolio/:id`        – Get portfolio details
- * - `PUT    /portfolio/:id`        – Update portfolio
- * - `DELETE /portfolio/:id`        – Archive portfolio (soft delete)
- * - `GET    /portfolio/:id/summary` – Portfolio summary with key metrics
- * - `GET    /portfolio/stats`      – Aggregate statistics across portfolios
- * - `GET    /portfolio/:id/export` – Full portfolio data export (JSON)
- * - `POST   /portfolio/:id/assets` – Add holding
- * - `PUT    /portfolio/:id/assets/:assetId` – Update holding
- * - `DELETE /portfolio/:id/assets/:assetId` – Remove holding
- * - `POST   /portfolio/:id/optimize` – Run optimization
- * - `GET    /portfolio/:id/rebalance-check` – Check rebalancing needs
- * - `POST   /portfolio/:id/rebalance` – Trigger rebalancing
- * - `GET    /portfolio/:id/performance-summary` – Performance overview
- * - `GET    /portfolio/:id/metrics` – Performance metrics
- * - `POST   /portfolio/backtests` – Create backtest
- * - `POST   /portfolio/predictions/:ticker/train` – Train ML model
- *
- * ## Rate Limiting
- * All endpoints are rate-limited to 20 requests/minute per user (trading tier).
- *
- * ## Authentication
- * All endpoints require JWT authentication via `JwtAuthGuard`.
- * Portfolio-specific endpoints also require `PortfolioOwnerGuard`.
- */
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -109,7 +74,6 @@ import { PortfolioOwnerGuard } from "../common/guard/portfolio-owner.guard";
     MLPredictionService,
     TradingTransactionService,
     TransactionHistoryService,
-    TypeOrmModule.forFeature([Portfolio, PortfolioAsset]),
   ],
 })
 export class PortfolioModule {}
