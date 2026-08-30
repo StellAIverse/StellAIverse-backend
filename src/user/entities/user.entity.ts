@@ -28,6 +28,19 @@ export enum KycStatus {
   REJECTED = "rejected",
 }
 
+export enum ProfileVisibility {
+  PUBLIC = "public",
+  PRIVATE = "private",
+  FOLLOWERS_ONLY = "followers_only",
+}
+
+export interface ProfilePreferences {
+  visibility: ProfileVisibility;
+  showEmail: boolean;
+  showBio: boolean;
+  showActivity: boolean;
+}
+
 @Entity("users")
 export class User {
   @PrimaryGeneratedColumn("uuid")
@@ -60,8 +73,17 @@ export class User {
   @Column({ nullable: true })
   avatar: string | null;
 
-  @Column({ type: "jsonb", nullable: true, default: {} })
-  preferences: Record<string, any> | null;
+  @Column({ 
+    type: "jsonb", 
+    nullable: false, 
+    default: {
+      visibility: ProfileVisibility.PUBLIC,
+      showEmail: false,
+      showBio: true,
+      showActivity: true
+    } 
+  })
+  preferences: ProfilePreferences;
 
   @Column({
     type: "varchar",
