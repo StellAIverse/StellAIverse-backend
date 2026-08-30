@@ -17,7 +17,6 @@ import { RateLimiterService } from "src/quota/rate-limiter.service";
 import {
   rateLimitDecisionsTotal,
   rateLimitRejectionsTotal,
-  rateLimitFallbackTotal,
 } from "src/config/metrics";
 
 @Injectable()
@@ -52,7 +51,7 @@ export class QuotaGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    const trackerKey = this.getTrackerKey(request, options);
+    const trackerKey = this.getTrackerKey(request);
 
     // Merge options with level config
     const levelConfig =
@@ -186,12 +185,6 @@ export class QuotaGuard implements CanActivate {
         policy,
         reason: result.reason ?? "limited",
       });
-      if (result.reason === "fallback") {
-        rateLimitFallbackTotal.inc({
-          identifier_type: trackerKey.split(":", 1)[0],
-          reason: "redis_unavailable",
-        });
-      }
       this.metrics?.rateLimitExceeded.inc({
         policy,
         user_tier: userTier,
@@ -301,29 +294,7 @@ export class QuotaGuard implements CanActivate {
     return true;
   }
 
-  private getTrackerKey(req: any, options?: RateLimitOptions): string {
-    const strategy = options?.key;
-    if (strategy === "global") {
-      return "global:default";
-    }
-    if (strategy === "ip") {
-      const xff = req.headers?.["x-forwarded-for"];
-      const ip = typeof xff === "string" ? xff.split(",")[0].trim() : req.ip;
-      return `ip:${ip || "unknown"}`;
-    }
-    if (strategy === "api-key") {
-      const apiKey = req.headers?.["x-api-key"];
-      if (typeof apiKey === "string" && apiKey.length > 0) {
-        const digest = createHash("sha256").update(apiKey).digest("hex");
-        return `api-key:${digest}`;
-      }
-      return `api-key:unknown`;
-    }
-    if (strategy === "user") {
-      const userId = req.user?.id;
-      return `user:${userId || "unknown"}`;
-    }
-
+  private getTrackerKey(req: any): string {
     const userId = req.user?.id;
     if (userId) {
       return `user:${userId}`;

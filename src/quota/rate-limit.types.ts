@@ -3,7 +3,7 @@ export interface QuotaResult {
   limit: number;
   remaining: number;
   resetMs: number;
-  reason?: "allowed" | "limited" | "whitelisted" | "blacklisted" | "fallback";
+  reason?: "allowed" | "limited" | "whitelisted" | "blacklisted";
 }
 
 export interface RateLimitPolicy {

@@ -148,25 +148,3 @@ export const rateLimitRejectionsTotal = new client.Counter({
   labelNames: ["policy", "reason"],
   registers: [register],
 });
-
-export const rateLimitRedisErrorsTotal = new client.Counter({
-  name: "stellaiverse_rate_limit_redis_errors_total",
-  help: "Total Redis errors encountered by the distributed rate limiter",
-  labelNames: ["operation"],
-  registers: [register],
-});
-
-export const rateLimitFallbackTotal = new client.Counter({
-  name: "stellaiverse_rate_limit_fallback_total",
-  help: "Total fallback decisions made when Redis was unavailable",
-  labelNames: ["identifier_type", "reason"],
-  registers: [register],
-});
-
-export const rateLimitRedisDuration = new client.Histogram({
-  name: "stellaiverse_rate_limit_redis_duration_seconds",
-  help: "Duration of Redis rate-limit operations",
-  labelNames: ["operation"],
-  buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1],
-  registers: [register],
-});
