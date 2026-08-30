@@ -9,6 +9,7 @@ import {
 
 export const RATE_LIMIT_REDIS = Symbol("RATE_LIMIT_REDIS");
 export const RATE_LIMIT_KEY_PREFIX = Symbol("RATE_LIMIT_KEY_PREFIX");
+export const RATE_LIMIT_FALLBACK_STORE = Symbol("RATE_LIMIT_FALLBACK_STORE");
 
 const TOKEN_BUCKET_SCRIPT = `
 local key = KEYS[1]
@@ -67,6 +68,8 @@ export class RedisRateLimitStore implements RateLimitStore, OnModuleDestroy {
   constructor(
     @Inject(RATE_LIMIT_REDIS) private readonly redis: Redis,
     @Inject(RATE_LIMIT_KEY_PREFIX) private readonly keyPrefix: string,
+    @Inject(RATE_LIMIT_FALLBACK_STORE)
+    private readonly fallbackStore: RateLimitStore,
   ) {}
 
   async consume(
@@ -77,52 +80,77 @@ export class RedisRateLimitStore implements RateLimitStore, OnModuleDestroy {
     const capacity = policy.limit + policy.burst;
     const refillPerMs = policy.limit / policy.windowMs;
     const ttlMs = Math.max(policy.windowMs, Math.ceil(capacity / refillPerMs));
-    const result = (await this.redis.eval(
-      TOKEN_BUCKET_SCRIPT,
-      1,
-      this.key("bucket", identifier),
-      String(nowMs),
-      String(refillPerMs),
-      String(capacity),
-      String(ttlMs),
-      policy.algorithm ?? "token-bucket",
-    )) as [number, number, number];
+    try {
+      const result = (await this.redis.eval(
+        TOKEN_BUCKET_SCRIPT,
+        1,
+        this.key("bucket", identifier),
+        String(nowMs),
+        String(refillPerMs),
+        String(capacity),
+        String(ttlMs),
+        policy.algorithm ?? "token-bucket",
+      )) as [number, number, number];
 
-    const allowed = Number(result[0]) === 1;
-    return {
-      allowed,
-      limit: capacity,
-      remaining: Number(result[1]),
-      resetMs: Math.max(0, Number(result[2])),
-      reason: allowed ? "allowed" : "limited",
-    };
+      const allowed = Number(result[0]) === 1;
+      return {
+        allowed,
+        limit: capacity,
+        remaining: Number(result[1]),
+        resetMs: Math.max(0, Number(result[2])),
+        reason: allowed ? "allowed" : "limited",
+      };
+    } catch {
+      const fallback = await this.fallbackStore.consume(
+        identifier,
+        policy,
+        nowMs,
+      );
+      return { ...fallback, reason: "fallback" };
+    }
   }
 
   async getPolicy(identifier: string): Promise<RateLimitPolicy | null> {
-    const raw = await this.redis.get(this.key("policy", identifier));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as RateLimitPolicy;
-    return {
-      limit: Number(parsed.limit),
-      windowMs: Number(parsed.windowMs),
-      burst: Number(parsed.burst),
-      algorithm: parsed.algorithm ?? "token-bucket",
-    };
+    try {
+      const raw = await this.redis.get(this.key("policy", identifier));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as RateLimitPolicy;
+      return {
+        limit: Number(parsed.limit),
+        windowMs: Number(parsed.windowMs),
+        burst: Number(parsed.burst),
+        algorithm: parsed.algorithm ?? "token-bucket",
+      };
+    } catch {
+      return this.fallbackStore.getPolicy(identifier);
+    }
   }
 
   async setPolicy(identifier: string, policy: RateLimitPolicy): Promise<void> {
-    await this.redis.set(
-      this.key("policy", identifier),
-      JSON.stringify(policy),
-    );
+    try {
+      await this.redis.set(
+        this.key("policy", identifier),
+        JSON.stringify(policy),
+      );
+    } catch {
+      await this.fallbackStore.setPolicy(identifier, policy);
+    }
   }
 
   async deletePolicy(identifier: string): Promise<void> {
-    await this.redis.del(this.key("policy", identifier));
+    try {
+      await this.redis.del(this.key("policy", identifier));
+    } catch {
+      await this.fallbackStore.deletePolicy(identifier);
+    }
   }
 
   async isMember(list: RateLimitList, identifier: string): Promise<boolean> {
-    return (await this.redis.sismember(this.key(list), identifier)) === 1;
+    try {
+      return (await this.redis.sismember(this.key(list), identifier)) === 1;
+    } catch {
+      return this.fallbackStore.isMember(list, identifier);
+    }
   }
 
   async setMember(
@@ -130,10 +158,14 @@ export class RedisRateLimitStore implements RateLimitStore, OnModuleDestroy {
     identifier: string,
     enabled: boolean,
   ): Promise<void> {
-    if (enabled) {
-      await this.redis.sadd(this.key(list), identifier);
-    } else {
-      await this.redis.srem(this.key(list), identifier);
+    try {
+      if (enabled) {
+        await this.redis.sadd(this.key(list), identifier);
+      } else {
+        await this.redis.srem(this.key(list), identifier);
+      }
+    } catch {
+      await this.fallbackStore.setMember(list, identifier, enabled);
     }
   }
 

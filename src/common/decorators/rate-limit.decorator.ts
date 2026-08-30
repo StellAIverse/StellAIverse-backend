@@ -19,6 +19,7 @@ export interface RateLimitOptions {
   windowMs?: number;
   burst?: number;
   algorithm?: "token-bucket" | "leaky-bucket";
+  key?: "user" | "ip" | "api-key" | "global";
 }
 
 const TIER_CONFIG: Record<SensitiveTier, { limit: number; ttl: number }> = {
