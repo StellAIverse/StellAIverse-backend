@@ -21,7 +21,6 @@ import { AuthModule } from "./auth/auth.module";
 import { AdminModule } from "./admin/admin.module";
 import { UserModule } from "./user/user.module";
 import { ProfileModule } from "./profile/profile.module";
-import { ProfilesModule } from "./profiles/profiles.module";
 import { AuditModule } from "./audit/audit.module";
 import { OracleModule } from "./oracle/oracle.module";
 import { WorkersModule } from "./workers/workers.module";
@@ -192,7 +191,6 @@ import { QuotaGuard } from "./common/guard/quota.guard";
     AdminModule,
     UserModule,
     ProfileModule,
-    ProfilesModule,
     AuditModule,
     OracleModule,
     WorkersModule,
