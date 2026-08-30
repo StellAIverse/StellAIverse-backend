@@ -14,21 +14,16 @@ import {
   HttpStatus,
   Response,
 } from "@nestjs/common";
-import {
-  ApiTags,
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiQuery,
-  ApiBody,
-} from "@nestjs/swagger";
+import { ApiTags, ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { RateLimit } from "../common/decorators/rate-limit.decorator";
 import { Response as ExpressResponse } from "express";
 import { JwtAuthGuard } from "src/auth/jwt.guard";
 import { PortfolioService } from "./services/portfolio.service";
-import { RebalancingService } from "./services/rebalancing.service";
+import {
+  RebalancingService,
+  RebalancingResult,
+} from "./services/rebalancing.service";
 import { PerformanceAnalyticsService } from "./services/performance-analytics.service";
 import { BacktestingService } from "./services/backtesting.service";
 import { MLPredictionService } from "./services/ml-prediction.service";
@@ -64,10 +59,11 @@ import { CreateBacktestDto } from "./dto/backtest.dto";
 import {
   CreateTransactionDto,
   TransactionFilterDto,
+  TransactionExportDto,
 } from "./dto/transaction.dto";
 
 @Controller("portfolio")
-@ApiTags("Portfolio Management")
+@ApiTags("Portfolio Optimization")
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Throttle({ trading: { ttl: 60_000, limit: 20 } })
@@ -83,71 +79,18 @@ export class PortfolioController {
     private transactionHistoryService: TransactionHistoryService,
   ) {}
 
-  // ─── Portfolio CRUD ──────────────────────────────────────────────
+  // Portfolio Management Endpoints
 
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
+  @Post("portfolios")
   @ApiOperation({ summary: "Create a new portfolio" })
-  @ApiBody({ type: CreatePortfolioDto, description: "Portfolio creation payload" })
-  @ApiResponse({
-    status: 201,
-    description: "Portfolio created successfully",
-    schema: {
-      example: {
-        id: "550e8400-e29b-41d4-a716-446655440000",
-        name: "My Portfolio",
-        description: "Long-term growth portfolio",
-        status: "active",
-        type: "balanced",
-        totalValue: 0,
-        currentAllocation: {},
-        initialAllocation: { BTC: 60, ETH: 40 },
-        autoRebalanceEnabled: false,
-        rebalanceThreshold: 5,
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z",
-      },
-    },
-  })
-  @ApiResponse({ status: 400, description: "Invalid input or validation error" })
-  @ApiResponse({ status: 401, description: "Unauthorized – missing or invalid JWT" })
-  @ApiResponse({ status: 409, description: "Portfolio name already exists" })
-  @ApiResponse({ status: 500, description: "Internal server error" })
   async createPortfolio(@Request() req: any, @Body() dto: CreatePortfolioDto) {
     return this.portfolioService.createPortfolio(req.user.id, dto);
   }
 
-  @Get()
-  @ApiOperation({ summary: "List user portfolios with pagination and filtering" })
-  @ApiQuery({ name: "status", required: false, enum: ["active", "inactive", "archived"], description: "Filter by portfolio status" })
-  @ApiQuery({ name: "type", required: false, enum: ["balanced", "aggressive", "conservative"], description: "Filter by portfolio type" })
-  @ApiQuery({ name: "search", required: false, type: String, description: "Case-insensitive name search" })
-  @ApiQuery({ name: "page", required: false, type: Number, description: "Page number (default: 1)" })
-  @ApiQuery({ name: "limit", required: false, type: Number, description: "Items per page (default: 20, max: 100)" })
-  @ApiResponse({
-    status: 200,
-    description: "Paginated list of portfolios",
-    schema: {
-      example: {
-        data: [
-          {
-            id: "550e8400-e29b-41d4-a716-446655440000",
-            name: "My Portfolio",
-            status: "active",
-            type: "balanced",
-            totalValue: 50000,
-            currentAllocation: { BTC: 60, ETH: 40 },
-          },
-        ],
-        total: 1,
-        page: 1,
-        limit: 20,
-        totalPages: 1,
-      },
-    },
+  @Get("portfolios")
+  @ApiOperation({
+    summary: "List portfolios for user with pagination and filtering",
   })
-  @ApiResponse({ status: 401, description: "Unauthorized – missing or invalid JWT" })
-  @ApiResponse({ status: 500, description: "Internal server error" })
   async getUserPortfolios(
     @Request() req: any,
     @Query() query: QueryPortfolioDto,
@@ -155,60 +98,15 @@ export class PortfolioController {
     return this.portfolioService.listPortfolios(req.user.id, query);
   }
 
-  // IMPORTANT: "stats" must be defined BEFORE ":id" to avoid
-  // NestJS matching GET /portfolio/stats against the :id param.
-  @Get("stats")
-  @ApiOperation({ summary: "Get aggregate portfolio statistics for the authenticated user" })
-  @ApiResponse({
-    status: 200,
-    description: "Aggregate statistics across all active portfolios",
-    schema: {
-      example: {
-        totalPortfolios: 3,
-        activePortfolios: 2,
-        totalValue: 150000,
-        totalAssets: 12,
-        byType: {
-          balanced: { count: 2, totalValue: 100000 },
-          aggressive: { count: 1, totalValue: 50000 },
-        },
-        topPortfolios: [
-          { id: "...", name: "Growth Fund", totalValue: 80000, type: "aggressive" },
-        ],
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: "Unauthorized – missing or invalid JWT" })
-  @ApiResponse({ status: 500, description: "Internal server error" })
-  async getPortfolioStats(@Request() req: any) {
-    return this.portfolioService.getPortfolioStats(req.user.id);
-  }
-
-  @Get(":id")
-  @ApiOperation({ summary: "Get portfolio details by ID" })
-  @ApiParam({ name: "id", type: String, description: "Portfolio UUID" })
-  @ApiResponse({
-    status: 200,
-    description: "Portfolio details with assets, optimization history, and performance metrics",
-  })
-  @ApiResponse({ status: 401, description: "Unauthorized – missing or invalid JWT" })
-  @ApiResponse({ status: 403, description: "Forbidden – not the portfolio owner" })
-  @ApiResponse({ status: 404, description: "Portfolio not found" })
+  @Get("portfolios/:id")
+  @ApiOperation({ summary: "Get portfolio details" })
   @UseGuards(PortfolioOwnerGuard)
   async getPortfolio(@Param("id") portfolioId: string) {
     return this.portfolioService.getPortfolio(portfolioId);
   }
 
-  @Put(":id")
-  @ApiOperation({ summary: "Update portfolio details" })
-  @ApiParam({ name: "id", type: String, description: "Portfolio UUID" })
-  @ApiBody({ type: UpdatePortfolioDto, description: "Fields to update" })
-  @ApiResponse({ status: 200, description: "Portfolio updated successfully" })
-  @ApiResponse({ status: 400, description: "Invalid input or validation error" })
-  @ApiResponse({ status: 401, description: "Unauthorized – missing or invalid JWT" })
-  @ApiResponse({ status: 403, description: "Forbidden – not the portfolio owner" })
-  @ApiResponse({ status: 404, description: "Portfolio not found" })
-  @ApiResponse({ status: 409, description: "Portfolio name already exists" })
+  @Put("portfolios/:id")
+  @ApiOperation({ summary: "Update portfolio" })
   @UseGuards(PortfolioOwnerGuard)
   async updatePortfolio(
     @Param("id") portfolioId: string,
@@ -217,78 +115,25 @@ export class PortfolioController {
     return this.portfolioService.updatePortfolio(portfolioId, dto);
   }
 
-  @Delete(":id")
-  @HttpCode(HttpStatus.OK)
+  @Post("portfolios/:id/archive")
   @ApiOperation({ summary: "Archive portfolio (soft delete via status)" })
-  @ApiParam({ name: "id", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Portfolio archived successfully" })
-  @ApiResponse({ status: 401, description: "Unauthorized – missing or invalid JWT" })
-  @ApiResponse({ status: 403, description: "Forbidden – not the portfolio owner" })
-  @ApiResponse({ status: 404, description: "Portfolio not found" })
   @UseGuards(PortfolioOwnerGuard)
   async archivePortfolio(@Param("id") portfolioId: string) {
     return this.portfolioService.archivePortfolio(portfolioId);
   }
 
-  // ─── Portfolio Summary & Stats ───────────────────────────────────
-
-  @Get(":id/summary")
-  @ApiOperation({ summary: "Get portfolio summary with key metrics" })
-  @ApiParam({ name: "id", type: String, description: "Portfolio UUID" })
-  @ApiResponse({
-    status: 200,
-    description: "Portfolio summary with value, asset count, allocation, and rebalance settings",
-    schema: {
-      example: {
-        id: "550e8400-e29b-41d4-a716-446655440000",
-        name: "My Portfolio",
-        status: "active",
-        type: "balanced",
-        totalValue: 50000,
-        assetCount: 5,
-        currentAllocation: { BTC: 40, ETH: 30, SOL: 20, USDC: 10 },
-        autoRebalanceEnabled: true,
-        rebalanceFrequency: "monthly",
-        rebalanceThreshold: 5,
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: "Unauthorized – missing or invalid JWT" })
-  @ApiResponse({ status: 403, description: "Forbidden – not the portfolio owner" })
-  @ApiResponse({ status: 404, description: "Portfolio not found" })
+  @Delete("portfolios/:id")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Soft-delete portfolio" })
   @UseGuards(PortfolioOwnerGuard)
-  async getPortfolioSummary(@Param("id") portfolioId: string) {
-    return this.portfolioService.getPortfolioSummary(portfolioId);
+  async deletePortfolio(@Param("id") portfolioId: string) {
+    return this.portfolioService.deletePortfolio(portfolioId);
   }
 
-  @Get(":id/export")
-  @ApiOperation({ summary: "Export full portfolio data as JSON" })
-  @ApiParam({ name: "id", type: String, description: "Portfolio UUID" })
-  @ApiResponse({
-    status: 200,
-    description: "Full portfolio export including assets, optimization history, and metrics",
-  })
-  @ApiResponse({ status: 401, description: "Unauthorized – missing or invalid JWT" })
-  @ApiResponse({ status: 403, description: "Forbidden – not the portfolio owner" })
-  @ApiResponse({ status: 404, description: "Portfolio not found" })
-  @UseGuards(PortfolioOwnerGuard)
-  async exportPortfolio(@Param("id") portfolioId: string) {
-    return this.portfolioService.exportPortfolio(portfolioId);
-  }
+  // Holding Management Endpoints
 
-  // ─── Holding (Asset) Management ──────────────────────────────────
-
-  @Post(":portfolioId/assets")
-  @HttpCode(HttpStatus.CREATED)
+  @Post("portfolios/:portfolioId/assets")
   @ApiOperation({ summary: "Add holding (asset) to portfolio" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiBody({ type: AddAssetToPortfolioDto, description: "Asset details" })
-  @ApiResponse({ status: 201, description: "Asset added successfully" })
-  @ApiResponse({ status: 400, description: "Invalid ticker, quantity, or chain" })
-  @ApiResponse({ status: 401, description: "Unauthorized – missing or invalid JWT" })
-  @ApiResponse({ status: 403, description: "Forbidden – not the portfolio owner" })
-  @ApiResponse({ status: 404, description: "Portfolio not found" })
-  @ApiResponse({ status: 409, description: "Asset with same ticker and chain already exists" })
   @UseGuards(PortfolioOwnerGuard)
   async addAsset(
     @Param("portfolioId") portfolioId: string,
@@ -305,15 +150,8 @@ export class PortfolioController {
     );
   }
 
-  @Put(":portfolioId/assets/:assetId")
+  @Put("portfolios/:portfolioId/assets/:assetId")
   @ApiOperation({ summary: "Update holding (asset) in portfolio" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiParam({ name: "assetId", type: String, description: "Asset UUID" })
-  @ApiBody({ type: UpdatePortfolioAssetDto, description: "Fields to update" })
-  @ApiResponse({ status: 200, description: "Asset updated successfully" })
-  @ApiResponse({ status: 400, description: "Invalid input or asset not found" })
-  @ApiResponse({ status: 401, description: "Unauthorized – missing or invalid JWT" })
-  @ApiResponse({ status: 403, description: "Forbidden – not the portfolio owner" })
   @UseGuards(PortfolioOwnerGuard)
   async updateAsset(
     @Param("portfolioId") portfolioId: string,
@@ -323,15 +161,9 @@ export class PortfolioController {
     return this.portfolioService.updateAsset(portfolioId, assetId, dto);
   }
 
-  @Delete(":portfolioId/assets/:assetId")
+  @Delete("portfolios/:portfolioId/assets/:assetId")
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: "Remove holding (asset) from portfolio" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiParam({ name: "assetId", type: String, description: "Asset UUID" })
-  @ApiResponse({ status: 204, description: "Asset removed successfully" })
-  @ApiResponse({ status: 400, description: "Asset not found in portfolio" })
-  @ApiResponse({ status: 401, description: "Unauthorized – missing or invalid JWT" })
-  @ApiResponse({ status: 403, description: "Forbidden – not the portfolio owner" })
   @UseGuards(PortfolioOwnerGuard)
   async removeAsset(
     @Param("portfolioId") portfolioId: string,
@@ -340,12 +172,8 @@ export class PortfolioController {
     return this.portfolioService.removeAsset(portfolioId, assetId);
   }
 
-  @Put(":portfolioId/assets/:assetId/price")
+  @Put("portfolios/:portfolioId/assets/:assetId/price")
   @ApiOperation({ summary: "Update asset price" })
-  @ApiParam({ name: "assetId", type: String, description: "Asset UUID" })
-  @ApiBody({ schema: { properties: { price: { type: "number", example: 45000 } } }, description: "New price" })
-  @ApiResponse({ status: 200, description: "Asset price updated" })
-  @ApiResponse({ status: 400, description: "Asset not found" })
   async updateAssetPrice(
     @Param("assetId") assetId: string,
     @Body() body: { price: number },
@@ -353,28 +181,23 @@ export class PortfolioController {
     return this.portfolioService.updateAssetPrice(assetId, body.price);
   }
 
-  // ─── Optimization ────────────────────────────────────────────────
+  // Optimization Endpoints
 
-  @Post(":portfolioId/optimize")
-  @HttpCode(HttpStatus.CREATED)
+  @Post("portfolios/:portfolioId/optimize")
   @ApiOperation({ summary: "Run portfolio optimization" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiBody({ type: CreateOptimizationDto, description: "Optimization parameters" })
-  @ApiResponse({ status: 201, description: "Optimization started" })
-  @ApiResponse({ status: 400, description: "Portfolio has no assets or invalid parameters" })
   @UseGuards(PortfolioOwnerGuard)
   async runOptimization(
     @Param("portfolioId") portfolioId: string,
     @Body() dto: CreateOptimizationDto,
   ) {
-    dto.portfolioId = portfolioId;
+    dto.portfolioId = portfolioId; // Ensure portfolio ID matches
     return this.portfolioService.runOptimization(portfolioId, dto);
   }
 
   @Post("optimizations/:optimizationId/approve")
-  @ApiOperation({ summary: "Approve optimization recommendation" })
-  @ApiParam({ name: "optimizationId", type: String, description: "Optimization UUID" })
-  @ApiResponse({ status: 200, description: "Optimization approved" })
+  @ApiOperation({
+    summary: "Approve optimization recommendation",
+  })
   async approveOptimization(
     @Param("optimizationId") optimizationId: string,
     @Body() dto: ApproveOptimizationDto,
@@ -383,18 +206,15 @@ export class PortfolioController {
   }
 
   @Post("optimizations/:optimizationId/implement")
-  @ApiOperation({ summary: "Implement optimization (apply to portfolio)" })
-  @ApiParam({ name: "optimizationId", type: String, description: "Optimization UUID" })
-  @ApiResponse({ status: 200, description: "Optimization applied to portfolio" })
+  @ApiOperation({
+    summary: "Implement optimization (apply to portfolio)",
+  })
   async implementOptimization(@Param("optimizationId") optimizationId: string) {
     return this.portfolioService.implementOptimization(optimizationId);
   }
 
-  @Get(":portfolioId/optimization-history")
+  @Get("portfolios/:portfolioId/optimization-history")
   @ApiOperation({ summary: "Get optimization history" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiQuery({ name: "limit", required: false, type: Number, description: "Max results (default: 10)" })
-  @ApiResponse({ status: 200, description: "List of optimization records" })
   @UseGuards(PortfolioOwnerGuard)
   async getOptimizationHistory(
     @Param("portfolioId") portfolioId: string,
@@ -403,12 +223,12 @@ export class PortfolioController {
     return this.portfolioService.getOptimizationHistory(portfolioId, limit);
   }
 
-  // ─── Rebalancing ─────────────────────────────────────────────────
+  // Rebalancing Endpoints
 
-  @Get(":portfolioId/rebalance-check")
-  @ApiOperation({ summary: "Check if portfolio needs rebalancing" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Rebalancing status and allocation drift" })
+  @Get("portfolios/:portfolioId/rebalance-check")
+  @ApiOperation({
+    summary: "Check if portfolio needs rebalancing",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async checkRebalancing(@Param("portfolioId") portfolioId: string) {
     const needsRebalancing =
@@ -422,12 +242,10 @@ export class PortfolioController {
     };
   }
 
-  @Post(":portfolioId/rebalance")
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: "Trigger portfolio rebalancing" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiBody({ type: TriggerRebalancingDto, description: "Rebalancing parameters" })
-  @ApiResponse({ status: 201, description: "Rebalancing triggered" })
+  @Post("portfolios/:portfolioId/rebalance")
+  @ApiOperation({
+    summary: "Trigger portfolio rebalancing",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async triggerRebalancing(
     @Param("portfolioId") portfolioId: string,
@@ -443,18 +261,17 @@ export class PortfolioController {
   }
 
   @Post("rebalancing/:rebalancingId/approve")
-  @ApiOperation({ summary: "Approve rebalancing event" })
-  @ApiParam({ name: "rebalancingId", type: String, description: "Rebalancing event UUID" })
-  @ApiResponse({ status: 200, description: "Rebalancing approved" })
+  @ApiOperation({
+    summary: "Approve rebalancing event",
+  })
   async approveRebalancing(@Param("rebalancingId") rebalancingId: string) {
     return this.rebalancingService.approveRebalancing(rebalancingId);
   }
 
   @Post("rebalancing/:rebalancingId/execute")
-  @ApiOperation({ summary: "Execute approved rebalancing" })
-  @ApiParam({ name: "rebalancingId", type: String, description: "Rebalancing event UUID" })
-  @ApiBody({ type: ExecuteRebalancingDto, description: "Execution details" })
-  @ApiResponse({ status: 200, description: "Rebalancing executed" })
+  @ApiOperation({
+    summary: "Execute approved rebalancing",
+  })
   async executeRebalancing(
     @Param("rebalancingId") rebalancingId: string,
     @Body() dto: ExecuteRebalancingDto,
@@ -468,10 +285,9 @@ export class PortfolioController {
   }
 
   @Post("rebalancing/:rebalancingId/cancel")
-  @ApiOperation({ summary: "Cancel rebalancing event" })
-  @ApiParam({ name: "rebalancingId", type: String, description: "Rebalancing event UUID" })
-  @ApiBody({ type: CancelRebalancingDto, description: "Cancellation reason" })
-  @ApiResponse({ status: 200, description: "Rebalancing cancelled" })
+  @ApiOperation({
+    summary: "Cancel rebalancing event",
+  })
   async cancelRebalancing(
     @Param("rebalancingId") rebalancingId: string,
     @Body() dto: CancelRebalancingDto,
@@ -479,11 +295,8 @@ export class PortfolioController {
     return this.rebalancingService.cancelRebalancing(rebalancingId, dto.reason);
   }
 
-  @Get(":portfolioId/rebalancing-history")
+  @Get("portfolios/:portfolioId/rebalancing-history")
   @ApiOperation({ summary: "Get rebalancing history" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiQuery({ name: "limit", required: false, type: Number, description: "Max results (default: 10)" })
-  @ApiResponse({ status: 200, description: "Rebalancing history" })
   @UseGuards(PortfolioOwnerGuard)
   async getRebalancingHistory(
     @Param("portfolioId") portfolioId: string,
@@ -492,30 +305,30 @@ export class PortfolioController {
     return this.rebalancingService.getRebalancingHistory(portfolioId, limit);
   }
 
-  @Get(":portfolioId/allocation-drift")
-  @ApiOperation({ summary: "Get current allocation drift from target" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Allocation drift data" })
+  @Get("portfolios/:portfolioId/allocation-drift")
+  @ApiOperation({
+    summary: "Get current allocation drift from target",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async getAllocationDrift(@Param("portfolioId") portfolioId: string) {
     return this.rebalancingService.calculateAllocationDrift(portfolioId);
   }
 
-  // ─── Performance Analytics ────────────────────────────────────────
+  // Performance Analytics Endpoints
 
-  @Get(":portfolioId/performance-summary")
-  @ApiOperation({ summary: "Get portfolio performance summary" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Performance summary" })
+  @Get("portfolios/:portfolioId/performance-summary")
+  @ApiOperation({
+    summary: "Get portfolio performance summary",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async getPerformanceSummary(@Param("portfolioId") portfolioId: string) {
     return this.performanceService.getPerformanceSummary(portfolioId);
   }
 
-  @Get(":portfolioId/metrics")
-  @ApiOperation({ summary: "Get performance metrics for date range" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Performance metrics" })
+  @Get("portfolios/:portfolioId/metrics")
+  @ApiOperation({
+    summary: "Get performance metrics for date range",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async getMetrics(
     @Param("portfolioId") portfolioId: string,
@@ -533,12 +346,10 @@ export class PortfolioController {
     );
   }
 
-  @Get(":portfolioId/metrics/attribution")
-  @ApiOperation({ summary: "Get attribution analysis" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiQuery({ name: "startDate", required: true, type: String, description: "Start date (ISO 8601)" })
-  @ApiQuery({ name: "endDate", required: true, type: String, description: "End date (ISO 8601)" })
-  @ApiResponse({ status: 200, description: "Attribution analysis" })
+  @Get("portfolios/:portfolioId/metrics/attribution")
+  @ApiOperation({
+    summary: "Get attribution analysis",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async getAttributionAnalysis(
     @Param("portfolioId") portfolioId: string,
@@ -556,12 +367,11 @@ export class PortfolioController {
     );
   }
 
-  @Get(":portfolioId/metrics/period")
+  @Get("portfolios/:portfolioId/metrics/period")
   @ApiOperation({
-    summary: "Get performance metrics for a predefined period (1D/1W/1M/3M/6M/YTD/1Y/3Y/ALL)",
+    summary:
+      "Get performance metrics for a predefined period (1D/1W/1M/3M/6M/YTD/1Y/3Y/ALL)",
   })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Period metrics" })
   @UseGuards(PortfolioOwnerGuard)
   async getMetricsByPeriod(
     @Param("portfolioId") portfolioId: string,
@@ -570,10 +380,10 @@ export class PortfolioController {
     return this.performanceService.getMetricsForPeriod(portfolioId, dto.period);
   }
 
-  @Get(":portfolioId/metrics/benchmark")
-  @ApiOperation({ summary: "Compare portfolio performance against a benchmark ticker" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Benchmark comparison" })
+  @Get("portfolios/:portfolioId/metrics/benchmark")
+  @ApiOperation({
+    summary: "Compare portfolio performance against a benchmark ticker",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async getBenchmarkComparison(
     @Param("portfolioId") portfolioId: string,
@@ -587,10 +397,10 @@ export class PortfolioController {
     );
   }
 
-  @Get(":portfolioId/metrics/var")
-  @ApiOperation({ summary: "Get Value at Risk (VaR) at a given confidence level" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Value at Risk" })
+  @Get("portfolios/:portfolioId/metrics/var")
+  @ApiOperation({
+    summary: "Get Value at Risk (VaR) at a given confidence level",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async getValueAtRisk(
     @Param("portfolioId") portfolioId: string,
@@ -604,10 +414,10 @@ export class PortfolioController {
     return { portfolioId, confidence, valueAtRisk: var_ };
   }
 
-  @Get(":portfolioId/metrics/calmar")
-  @ApiOperation({ summary: "Get Calmar ratio (annualised return / max drawdown)" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Calmar ratio" })
+  @Get("portfolios/:portfolioId/metrics/calmar")
+  @ApiOperation({
+    summary: "Get Calmar ratio (annualised return / max drawdown)",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async getCalmarRatio(@Param("portfolioId") portfolioId: string) {
     const calmarRatio =
@@ -615,12 +425,10 @@ export class PortfolioController {
     return { portfolioId, calmarRatio };
   }
 
-  @Post(":portfolioId/metrics/snapshot")
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: "Record a performance snapshot for the portfolio" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiBody({ type: RecordSnapshotDto, description: "Snapshot data" })
-  @ApiResponse({ status: 201, description: "Snapshot recorded" })
+  @Post("portfolios/:portfolioId/metrics/snapshot")
+  @ApiOperation({
+    summary: "Record a performance snapshot for the portfolio",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async recordSnapshot(
     @Param("portfolioId") portfolioId: string,
@@ -634,20 +442,22 @@ export class PortfolioController {
     );
   }
 
-  @Get(":portfolioId/metrics/roi")
-  @ApiOperation({ summary: "Get Return on Investment (ROI) relative to the invested cost basis" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "ROI percentage" })
+  @Get("portfolios/:portfolioId/metrics/roi")
+  @ApiOperation({
+    summary:
+      "Get Return on Investment (ROI) relative to the invested cost basis",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async getROI(@Param("portfolioId") portfolioId: string) {
     const roi = await this.performanceService.calculateROI(portfolioId);
     return { portfolioId, roi };
   }
 
-  @Get(":portfolioId/metrics/drawdown")
-  @ApiOperation({ summary: "Get current drawdown relative to the all-time peak portfolio value" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Current drawdown" })
+  @Get("portfolios/:portfolioId/metrics/drawdown")
+  @ApiOperation({
+    summary:
+      "Get current drawdown relative to the all-time peak portfolio value",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async getCurrentDrawdown(@Param("portfolioId") portfolioId: string) {
     const currentDrawdown =
@@ -655,47 +465,42 @@ export class PortfolioController {
     return { portfolioId, currentDrawdown };
   }
 
-  @Get(":portfolioId/metrics/periods")
-  @ApiOperation({ summary: "Get standard period returns (YTD, 1Y, 3Y, 5Y) for the portfolio" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Period returns" })
+  @Get("portfolios/:portfolioId/metrics/periods")
+  @ApiOperation({
+    summary: "Get standard period returns (YTD, 1Y, 3Y, 5Y) for the portfolio",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async getPeriodReturns(@Param("portfolioId") portfolioId: string) {
     return this.performanceService.calculatePeriodReturns(portfolioId);
   }
 
-  @Get(":portfolioId/metrics/allocation")
-  @ApiOperation({ summary: "Get the current allocation breakdown (ticker → percentage)" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Allocation breakdown" })
+  @Get("portfolios/:portfolioId/metrics/allocation")
+  @ApiOperation({
+    summary: "Get the current allocation breakdown (ticker → percentage)",
+  })
   @UseGuards(PortfolioOwnerGuard)
   async getAllocationBreakdown(@Param("portfolioId") portfolioId: string) {
     return this.performanceService.getAllocationBreakdown(portfolioId);
   }
 
-  // ─── Backtesting ─────────────────────────────────────────────────
+  // Backtesting Endpoints
 
   @Post("backtests")
-  @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: "Create and run backtest" })
-  @ApiBody({ type: CreateBacktestDto, description: "Backtest parameters" })
-  @ApiResponse({ status: 201, description: "Backtest created" })
   async createBacktest(@Request() req: any, @Body() dto: CreateBacktestDto) {
     return this.backtestService.createBacktest(req.user.id, dto);
   }
 
   @Get("backtests/:backtestId")
   @ApiOperation({ summary: "Get backtest result" })
-  @ApiParam({ name: "backtestId", type: String, description: "Backtest UUID" })
-  @ApiResponse({ status: 200, description: "Backtest result" })
   async getBacktest(@Param("backtestId") backtestId: string) {
     return this.backtestService.getBacktest(backtestId);
   }
 
   @Get("backtests")
-  @ApiOperation({ summary: "Get backtests for user" })
-  @ApiQuery({ name: "limit", required: false, type: Number, description: "Max results (default: 10)" })
-  @ApiResponse({ status: 200, description: "List of backtests" })
+  @ApiOperation({
+    summary: "Get backtests for user",
+  })
   async getUserBacktests(
     @Request() req: any,
     @Query("limit") limit: number = 10,
@@ -704,21 +509,19 @@ export class PortfolioController {
   }
 
   @Post("backtests/compare")
-  @ApiOperation({ summary: "Compare multiple backtests" })
-  @ApiBody({ schema: { properties: { backtestIds: { type: "array", items: { type: "string" } } } }, description: "Backtest IDs to compare" })
-  @ApiResponse({ status: 200, description: "Backtest comparison" })
+  @ApiOperation({
+    summary: "Compare multiple backtests",
+  })
   async compareBacktests(@Body() body: { backtestIds: string[] }) {
     return this.backtestService.compareBacktests(body.backtestIds);
   }
 
-  // ─── ML Predictions ──────────────────────────────────────────────
+  // ML Prediction Endpoints
 
   @Post("predictions/train/:ticker")
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: "Train ML model for asset" })
-  @ApiParam({ name: "ticker", type: String, description: "Asset ticker symbol" })
-  @ApiBody({ schema: { properties: { historicalPrices: { type: "array", items: { type: "number" } } } }, description: "Historical price data" })
-  @ApiResponse({ status: 201, description: "Model trained" })
+  @ApiOperation({
+    summary: "Train ML model for asset",
+  })
   async trainPredictor(
     @Param("ticker") ticker: string,
     @Body() body: { historicalPrices: number[] },
@@ -727,11 +530,9 @@ export class PortfolioController {
   }
 
   @Post("predictions/forecast/:ticker")
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: "Get ML price predictions for asset" })
-  @ApiParam({ name: "ticker", type: String, description: "Asset ticker symbol" })
-  @ApiBody({ schema: { properties: { currentPrice: { type: "number" }, historicalPrices: { type: "array", items: { type: "number" } }, daysAhead: { type: "number" } } }, description: "Prediction parameters" })
-  @ApiResponse({ status: 201, description: "Prediction result" })
+  @ApiOperation({
+    summary: "Get ML price predictions for asset",
+  })
   async predictAssetReturns(
     @Param("ticker") ticker: string,
     @Body()
@@ -750,20 +551,17 @@ export class PortfolioController {
   }
 
   @Get("predictions/stats")
-  @ApiOperation({ summary: "Get ML predictor statistics" })
-  @ApiResponse({ status: 200, description: "Predictor statistics" })
+  @ApiOperation({
+    summary: "Get ML predictor statistics",
+  })
   async getPredictorStats() {
     return this.mlService.getPredictorStats();
   }
 
-  // ─── Transaction Tracking ─────────────────────────────────────────
+  // Transaction Tracking Endpoints
 
-  @Post(":portfolioId/transactions")
-  @HttpCode(HttpStatus.CREATED)
+  @Post("portfolios/:portfolioId/transactions")
   @ApiOperation({ summary: "Record a new transaction" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiBody({ type: CreateTransactionDto, description: "Transaction details" })
-  @ApiResponse({ status: 201, description: "Transaction recorded" })
   @UseGuards(PortfolioOwnerGuard)
   async recordTransaction(
     @Request() req: any,
@@ -777,10 +575,8 @@ export class PortfolioController {
     );
   }
 
-  @Get(":portfolioId/transactions")
+  @Get("portfolios/:portfolioId/transactions")
   @ApiOperation({ summary: "Get transaction history with filtering" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Transaction history" })
   @UseGuards(PortfolioOwnerGuard)
   async getTransactionHistory(
     @Request() req: any,
@@ -794,30 +590,23 @@ export class PortfolioController {
     );
   }
 
-  // IMPORTANT: Specific routes MUST come before :transactionId param
-  // to avoid NestJS matching "stats", "cost-basis", "export" as a transactionId.
-
-  @Get(":portfolioId/transactions/stats")
-  @ApiOperation({ summary: "Get transaction statistics" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Transaction statistics" })
+  @Get("portfolios/:portfolioId/transactions/:transactionId")
+  @ApiOperation({ summary: "Get a single transaction" })
   @UseGuards(PortfolioOwnerGuard)
-  async getTransactionStats(
+  async getTransaction(
     @Request() req: any,
     @Param("portfolioId") portfolioId: string,
+    @Param("transactionId") transactionId: string,
   ) {
-    return this.transactionHistoryService.getTransactionStats(
+    return this.transactionHistoryService.getTransaction(
+      transactionId,
       portfolioId,
       req.user.id,
     );
   }
 
-  @Get(":portfolioId/transactions/cost-basis/:ticker")
+  @Get("portfolios/:portfolioId/transactions/cost-basis/:ticker")
   @ApiOperation({ summary: "Calculate cost basis for a specific ticker" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiParam({ name: "ticker", type: String, description: "Asset ticker symbol" })
-  @ApiQuery({ name: "asOfDate", required: false, type: String, description: "As-of date (ISO 8601)" })
-  @ApiResponse({ status: 200, description: "Cost basis for ticker" })
   @UseGuards(PortfolioOwnerGuard)
   async getCostBasis(
     @Request() req: any,
@@ -833,10 +622,8 @@ export class PortfolioController {
     );
   }
 
-  @Get(":portfolioId/transactions/cost-basis")
+  @Get("portfolios/:portfolioId/transactions/cost-basis")
   @ApiOperation({ summary: "Calculate cost basis for all holdings" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "Cost basis for all holdings" })
   @UseGuards(PortfolioOwnerGuard)
   async getAllCostBasis(
     @Request() req: any,
@@ -848,10 +635,8 @@ export class PortfolioController {
     );
   }
 
-  @Get(":portfolioId/transactions/export/csv")
+  @Get("portfolios/:portfolioId/transactions/export/csv")
   @ApiOperation({ summary: "Export transactions as CSV" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "CSV file download" })
   @UseGuards(PortfolioOwnerGuard)
   async exportTransactionsCSV(
     @Request() req: any,
@@ -873,10 +658,8 @@ export class PortfolioController {
     res.send(csv);
   }
 
-  @Get(":portfolioId/transactions/export/json")
+  @Get("portfolios/:portfolioId/transactions/export/json")
   @ApiOperation({ summary: "Export transactions as JSON" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiResponse({ status: 200, description: "JSON export" })
   @UseGuards(PortfolioOwnerGuard)
   async exportTransactionsJSON(
     @Request() req: any,
@@ -890,30 +673,21 @@ export class PortfolioController {
     );
   }
 
-  // :transactionId param route MUST come AFTER all specific sub-routes
-  @Get(":portfolioId/transactions/:transactionId")
-  @ApiOperation({ summary: "Get a single transaction" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiParam({ name: "transactionId", type: String, description: "Transaction UUID" })
-  @ApiResponse({ status: 200, description: "Transaction details" })
+  @Get("portfolios/:portfolioId/transactions/stats")
+  @ApiOperation({ summary: "Get transaction statistics" })
   @UseGuards(PortfolioOwnerGuard)
-  async getTransaction(
+  async getTransactionStats(
     @Request() req: any,
     @Param("portfolioId") portfolioId: string,
-    @Param("transactionId") transactionId: string,
   ) {
-    return this.transactionHistoryService.getTransaction(
-      transactionId,
+    return this.transactionHistoryService.getTransactionStats(
       portfolioId,
       req.user.id,
     );
   }
 
-  @Post(":portfolioId/transactions/:transactionId/archive")
+  @Post("portfolios/:portfolioId/transactions/:transactionId/archive")
   @ApiOperation({ summary: "Archive a transaction" })
-  @ApiParam({ name: "portfolioId", type: String, description: "Portfolio UUID" })
-  @ApiParam({ name: "transactionId", type: String, description: "Transaction UUID" })
-  @ApiResponse({ status: 200, description: "Transaction archived" })
   @UseGuards(PortfolioOwnerGuard)
   async archiveTransaction(
     @Request() req: any,
